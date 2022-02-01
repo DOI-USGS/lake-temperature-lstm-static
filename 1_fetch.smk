@@ -12,15 +12,15 @@ def get_mntoha_input_files(wildcards):
 
     '''
     out_dir = "1_fetch/out"
-    categories = config["mntoha"].keys()
+    categories = config["fetch_mntoha"].keys()
     input_files = []
     # include files under files key in each category
     for category in categories:
-        for filename in config["mntoha"][category]["files"]:
+        for filename in config["fetch_mntoha"][category]["files"]:
             input_files.append(os.path.join(out_dir, category + "_mntoha", filename))
     # include driver files: 3 types x 13 suffixes = 39 files
-    for driver_type in config["mntoha"]["drivers"]["driver_types"]:
-        for suffix in config["mntoha"]["drivers"]["suffixes"]:
+    for driver_type in config["fetch_mntoha"]["drivers"]["driver_types"]:
+        for suffix in config["fetch_mntoha"]["drivers"]["suffixes"]:
             input_files.append(os.path.join(out_dir, "drivers_mntoha", f"{driver_type}_{suffix}.zip"))
     return input_files
 
@@ -37,7 +37,7 @@ rule fetch_mntoha_data_file:
     output:
         "1_fetch/out/{file_category}_mntoha/{file}"
     params:
-        sb_id = lambda wildcards: config["mntoha"][wildcards.file_category]["sb_id"]
+        sb_id = lambda wildcards: config["fetch_mntoha"][wildcards.file_category]["sb_id"]
     script:
         "1_fetch/src/sb_fetch.py"
 

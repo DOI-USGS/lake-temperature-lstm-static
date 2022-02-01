@@ -1,4 +1,5 @@
 include: "1_fetch.smk"
+include: "2_process.smk"
 
 
 rule all:
