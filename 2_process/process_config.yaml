@@ -1,0 +1,9 @@
+process_mntoha:
+  max_min_obs_per_date: 5
+  min_obs_per_meter_per_date: 0.5
+  min_obs_dates: 10
+  seq_length: 365
+  source_dir: 1_fetch/out
+  tmp_dir: 2_process/tmp
+  metadata_file: 1_fetch/out/metadata_mntoha/lake_metadata.csv
+  obs_file: 2_process/tmp/obs_mntoha/temperature_observations/temperature_observations.csv
