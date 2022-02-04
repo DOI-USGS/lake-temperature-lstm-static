@@ -61,6 +61,34 @@ def unzip_files(files, source_dir, destination_dir):
     return destination_files
 
 
+def all_dates_depths(df, depths, depth_col='interpolated_depth', pad_before_days=0, pad_after_days=0):
+    """
+    Fill NaNs for missing obs
+    """
+    
+    pad_before_days_td = np.timedelta64(pad_before_days, 'D')
+    pad_after_days_td = np.timedelta64(pad_after_days, 'D')
+    # buffer start_date by pad_before_days days
+    start_date = df.date.min() - pad_before_days_td
+    # buffer end_date by pad_after_days days
+    end_date = df.date.max() + pad_after_days_td
+    date_range = pd.date_range(start=start_date, end=end_date)
+
+    # create MultiIndex of all combinations of dates and depths
+    midx = pd.MultiIndex.from_product([date_range, depths], names=['date', depth_col])
+    # Average duplicate measurements (same day, same nearest depth)
+    df_midx = df.groupby(['date', depth_col]).temp.mean().to_frame()
+    df_timesteps = df_midx.reindex(midx, fill_value=np.NaN)
+
+    # reshape to have one column per depth
+    df_timesteps = df_timesteps.unstack()
+    # flatten column levels
+    df_timesteps.columns = [' '.join([str(s) for s in col]).strip() for col in df_timesteps.columns.values]
+    # Now df_timesteps has dimensions of len(date_range) by len(depths)
+    # values are NaN wherever there are no observations
+    return df_timesteps
+
+
 def assemble_data(lake_metadata, unzipped_dir, config):
     """
     Assemble raw data into equal-length sequences for training/testing
@@ -96,8 +124,9 @@ def assemble_data(lake_metadata, unzipped_dir, config):
         lake_obs = obs[obs.site_id==lake.site_id].copy()
 
         ### Fill NaNs for missing obs
-        # uses spinup_time, lake_obs, depths, 
-        # Now, let's try a naive way: create an empty dataframe and merge on that.
+        df_timesteps = all_dates_depths(lake_obs, depths, pad_before_days=spinup_time)
+
+        '''
         spinup_time_td = np.timedelta64(spinup_time, 'D')
         # buffer start_date by spinup_time days
         start_date = lake_obs.date.min() - spinup_time_td
@@ -113,6 +142,7 @@ def assemble_data(lake_metadata, unzipped_dir, config):
         df_timesteps = df_timesteps.unstack()
         # flatten column levels
         df_timesteps.columns = [' '.join([str(s) for s in col]).strip() for col in df_timesteps.columns.values]
+        '''
         # Now df_timesteps has dimensions of len(date_range) by len(depths)
         # values are NaN wherever there are no observations
 
@@ -156,7 +186,9 @@ def assemble_data(lake_metadata, unzipped_dir, config):
         # Create a strided view into arr_timesteps
         # This creates a numpy object with sequences of length sequence_length
         # and offsets of sequence_offset without making a copy the array
-        all_sequences = np.lib.stride_tricks.sliding_window_view(arr_timesteps, sequence_length, axis=0)[::sequence_offset, :]
+        all_sequences = np.lib.stride_tricks.sliding_window_view(
+            arr_timesteps, sequence_length, axis=0
+        )[::sequence_offset, :]
         # shape is now (# sequences, # features + depths, sequence_length)
         # The first `len(depths)` elements in the middle dimension are observations
 
