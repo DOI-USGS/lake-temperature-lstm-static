@@ -22,6 +22,12 @@
 *.prj
 *.shx
 *.patch
+*.pdf
+
+# Specific files and directories to exclude
+1_fetch/out
+2_process/log
+2_process/out
 
 # Specific files to include
 !/notebooks/Explore_MNTOHA_temperature_observations.html
