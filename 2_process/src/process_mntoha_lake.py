@@ -71,75 +71,78 @@ def assemble_lake_data(site_id, config):
     obs_interpolated = pd.read_csv(config['obs_interpolated_file'], parse_dates=['date'])
     # lake observations
     lake_obs_interpolated = obs_interpolated[obs_interpolated.site_id==site_id].copy()
+    # determine if there are any observations
+    if len(lake_obs_interpolated) == 0:
+        lake_sequences = np.empty((0))
+    else:
+        # Read metadata with elevation
+        lake_metadata_augmented = pd.read_csv(config['metadata_augmented_file'])
+        # NOTE: If there are duplicates, the next line will only grap the first.
+        # If there are no matches, it will throw an error
+        lake = lake_metadata_augmented[lake_metadata_augmented.site_id==site_id].iloc[0,:]
 
-    # Read metadata with elevation
-    lake_metadata_augmented = pd.read_csv(config['metadata_augmented_file'])
-    # NOTE: If there are duplicates, the next line will only grap the first.
-    # If there are no matches, it will throw an error
-    lake = lake_metadata_augmented[lake_metadata_augmented.site_id==site_id].iloc[0,:]
+        # Fill NaNs for missing obs
+        obs_all = all_dates_depths(lake_obs_interpolated,
+                                   depths,
+                                   pad_before_days=spinup_time,
+                                   min_days=sequence_length)
+        # Now obs_all has dimensions of len(date_range) by len(depths)
+        # values are NaN wherever there are no observations
 
-    # Fill NaNs for missing obs
-    obs_all = all_dates_depths(lake_obs_interpolated,
-                               depths,
-                               pad_before_days=spinup_time,
-                               min_days=sequence_length)
-    # Now obs_all has dimensions of len(date_range) by len(depths)
-    # values are NaN wherever there are no observations
+        # Join drivers
 
-    # Join drivers
+        drivers_file = f'{tmp_dir}/drivers_mntoha/inputs_{lake.group_id}/{lake.meteo_filename}'
+        drivers = pd.read_csv(drivers_file, parse_dates=['time'], index_col='time')
+        # TODO: Check for nans
+        # drivers.isna().any()
+        obs_all = obs_all.join(drivers, how='left')
 
-    drivers_file = f'{tmp_dir}/drivers_mntoha/inputs_{lake.group_id}/{lake.meteo_filename}'
-    drivers = pd.read_csv(drivers_file, parse_dates=['time'], index_col='time')
-    # TODO: Check for nans
-    # drivers.isna().any()
-    obs_all = obs_all.join(drivers, how='left')
+        # Join clarity
+        clarity_file = f'{tmp_dir}/drivers_mntoha/clarity_{lake.group_id}/gam_{lake.site_id}_clarity.csv'
+        clarity = pd.read_csv(clarity_file, parse_dates=['date'], index_col='date')
+        obs_all = obs_all.join(clarity, how='left')
 
-    # Join clarity
-    clarity_file = f'{tmp_dir}/drivers_mntoha/clarity_{lake.group_id}/gam_{lake.site_id}_clarity.csv'
-    clarity = pd.read_csv(clarity_file, parse_dates=['date'], index_col='date')
-    obs_all = obs_all.join(clarity, how='left')
+        # Join ice flags
+        ice_flags_file = f'{tmp_dir}/drivers_mntoha/ice_flags_{lake.group_id}/pb0_{lake.site_id}_ice_flags.csv'
+        ice_flags = pd.read_csv(ice_flags_file, parse_dates=['date'], index_col='date')
+        obs_all = obs_all.join(ice_flags, how='left')
 
-    # Join ice flags
-    ice_flags_file = f'{tmp_dir}/drivers_mntoha/ice_flags_{lake.group_id}/pb0_{lake.site_id}_ice_flags.csv'
-    ice_flags = pd.read_csv(ice_flags_file, parse_dates=['date'], index_col='date')
-    obs_all = obs_all.join(ice_flags, how='left')
+        # Get attributes
+        obs_all['area'] = lake['area']
+        obs_all['lon'] = lake['centroid_lon']
+        obs_all['lat'] = lake['centroid_lat']
+        obs_all['elevation'] = lake['elevation']
+        # Now obs_all is one long timeseries with depth-specific observations, drivers, and attributes as columns
 
-    # Get attributes
-    obs_all['area'] = lake['area']
-    obs_all['lon'] = lake['centroid_lon']
-    obs_all['lat'] = lake['centroid_lat']
-    obs_all['elevation'] = lake['elevation']
-    # Now obs_all is one long timeseries with depth-specific observations, drivers, and attributes as columns
+        # Split into segments
 
-    # Split into segments
+        # Let's make some rules for segments:
+        # 1. 400 day sequences
+        # 2. First 100 days are spinup, so don't have observations then
+        # 3. Each next sequence starts 200 days later than the previous
+        # 4. Discard sequences that lack observations
+        # 5. We know going in that the first and last sequence have observations
 
-    # Let's make some rules for segments:
-    # 1. 400 day sequences
-    # 2. First 100 days are spinup, so don't have observations then
-    # 3. Each next sequence starts 200 days later than the previous
-    # 4. Discard sequences that lack observations
-    # 5. We know going in that the first and last sequence have observations
+        # Convert dataframe to numpy array
+        obs_all_array = obs_all.to_numpy(dtype=np.float32)
+        # Create a strided view into obs_all_array
+        # This creates a numpy object with sequences of length sequence_length
+        # and offsets of sequence_offset without making a copy the array
+        all_sequences = np.lib.stride_tricks.sliding_window_view(
+            obs_all_array, sequence_length, axis=0
+        )[::sequence_offset, :]
+        # shape is now (# sequences, # features + depths, sequence_length)
+        # The first `len(depths)` elements in the middle dimension are observations
 
-    # Convert dataframe to numpy array
-    obs_all_array = obs_all.to_numpy(dtype=np.float32)
-    # Create a strided view into obs_all_array
-    # This creates a numpy object with sequences of length sequence_length
-    # and offsets of sequence_offset without making a copy the array
-    all_sequences = np.lib.stride_tricks.sliding_window_view(
-        obs_all_array, sequence_length, axis=0
-    )[::sequence_offset, :]
-    # shape is now (# sequences, # features + depths, sequence_length)
-    # The first `len(depths)` elements in the middle dimension are observations
+        # Mask sequences that have only NaN observations
+        mask_nan_sequences = np.any(np.any(~np.isnan(all_sequences[:, :len(depths), :]), axis=2), axis=1)
+        # sequences to keep
+        lake_sequences = all_sequences[mask_nan_sequences, :, :].transpose((0, 2, 1))
 
-    # Mask sequences that have only NaN observations
-    mask_nan_sequences = np.any(np.any(~np.isnan(all_sequences[:, :len(depths), :]), axis=2), axis=1)
-    # sequences to keep
-    lake_sequences = all_sequences[mask_nan_sequences, :, :].transpose((0, 2, 1))
-
-    # also keep the last `sequence_length` days, since the final observation is always non-NaN,
-    # unless all_sequences already has that last sequence 
-    if (obs_all_array.shape[0] - sequence_length) % sequence_offset != 0:
-        lake_sequences = np.concatenate((lake_sequences, np.array([obs_all_array[-sequence_length:, :]])), axis=0)
+        # also keep the last `sequence_length` days, since the final observation is always non-NaN,
+        # unless all_sequences already has that last sequence 
+        if (obs_all_array.shape[0] - sequence_length) % sequence_offset != 0:
+            lake_sequences = np.concatenate((lake_sequences, np.array([obs_all_array[-sequence_length:, :]])), axis=0)
 
     return lake_sequences
 

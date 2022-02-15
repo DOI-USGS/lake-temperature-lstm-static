@@ -1,7 +1,4 @@
 process_mntoha:
-  max_min_obs_per_date: 5
-  min_obs_per_meter_per_date: 0.5
-  min_obs_dates: 10
   sequence_length: 400
   sequence_offset: 200
   spinup_time: 100
