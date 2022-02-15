@@ -35,30 +35,27 @@ def elevation_function(lat, lon):
 
     return elevation
 
-def unzip_files(files, source_dir, destination_dir):
+def unzip_file(filename, source_dir, destination_dir):
     """
-    Unzip files and save them to another directory.
+    Unzip file, save results to another directory.
 
-    :param files: Files to unzip, with full paths
-    :param source_dir: Directory to pull zipped files from.
-        This part of the path is removed from the beginning of files to determine where to save unzipped files.
+    :param filename: File to unzip, with full paths
+    :param source_dir: Directory to pull zipped file from.
+        This part of the path is removed from the beginning of filename to determine where to save unzipped files.
     :param destination_dir: Directory to save unzipped files to.
         In each file path, source_dir is replaced with destination_dir to determine where to save unzipped files.
     :returns: list of paths to unzipped files
 
     """
-    destination_files = []
-    for f in files:
-        # check that files are inside source_dir
-        if os.path.samefile(source_dir, os.path.commonpath([f, source_dir])):
-            relfile = os.path.relpath(f, source_dir)
-            destination_file = os.path.join(destination_dir, os.path.splitext(relfile)[0])
-            with zipfile.ZipFile(f, 'r') as zf:
-                zf.extractall(destination_file)
-            destination_files.append(destination_file)
-        else:
-            raise FileNotFoundError(f'File {f} not in directory {source_dir}')
-    return destination_files
+    # check that file is inside source_dir
+    if os.path.samefile(source_dir, os.path.commonpath([filename, source_dir])):
+        relfile = os.path.relpath(filename, source_dir)
+        destination_file = os.path.join(destination_dir, os.path.splitext(relfile)[0])
+        with zipfile.ZipFile(filename, 'r') as zf:
+            zf.extractall(destination_file)
+    else:
+        raise FileNotFoundError(f'File {f} not in directory {source_dir}')
+    return destination_file
 
 
 def make_obs_interpolated(in_file, out_file, depths):
@@ -121,12 +118,12 @@ def unzip_all(in_files, log_file, source_dir, destination_dir):
 
     # unzip files to 2_process/tmp folder
     zip_files = [f for f in in_files if f.lower().endswith('.zip')]
+    unzipped_files = [unzip_file(zf, source_dir, destination_dir)
+                      for zf in zip_files]
     with open(log_file, 'w') as f:
         f.write("Unzipping:\n\n")
-        for zip_file in zip_files:
-            f.write(zip_file + '\n')
-    unzipped_files = unzip_files(zip_files, source_dir, destination_dir)
-    with open(log_file, 'a') as f: 
+        for zj in zip_files:
+            f.write(zj + '\n')
         f.write("\nUnzipped these files:\n")
         for unzipped_file in unzipped_files:
             f.write(unzipped_file + '\n')
