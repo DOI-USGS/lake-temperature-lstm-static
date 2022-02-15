@@ -6,8 +6,6 @@ import urllib
 import numpy as np
 import pandas as pd
 from scipy import interpolate
-import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
 
 def elevation_function(lat, lon):
     """
