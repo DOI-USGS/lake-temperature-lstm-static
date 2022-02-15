@@ -25,7 +25,6 @@ def mntoha_lake_sequence_files(wildcards):
     # make this function dependent on fetch_all
     # needed because lake_metadata.csv is used to determine lake_sequence_files
     ck_output = checkpoints.fetch_all.get(**wildcards).output[0]
-    print(ck_output)
     out_dir = os.path.join(config["process_mntoha"]["out_dir"], 'mntoha_sequences')
     lake_metadata_file = config["process_mntoha"]["metadata_file"]
     lake_metadata = pd.read_csv(lake_metadata_file)
@@ -76,22 +75,21 @@ rule mntoha_lake_sequences:
 # Add elevation to MNTOHA lake metadata
 rule augment_mntoha_lake_metadata:
     input:
-        config["process_mntoha"]["metadata_file"]
+        "1_fetch/out/downloaded_files.txt"
     output:
         config["process_mntoha"]["metadata_augmented_file"]
     run:
-        make_lake_metadata_augmented(input[0], output[0])
+        make_lake_metadata_augmented(config["process_mntoha"]["metadata_file"], output[0])
 
 
 # Add column of observation depths interpolated to nearest modeling mesh node
 rule interpolate_mntoha_obs_depths:
     input:
-        config["process_mntoha"]["obs_file"],
-        config["process_mntoha"]["unzip_log_file"]
+        config["process_mntoha"]["unzip_log_file"],
     output:
         config["process_mntoha"]["obs_interpolated_file"]
     run:
-        make_obs_interpolated(input[0], output[0], config["process_mntoha"]["depths"])
+        make_obs_interpolated(config["process_mntoha"]["obs_file"], output[0], config["process_mntoha"]["depths"])
 
 
 # Unzip all MNTOHA data downloaded from ScienceBase

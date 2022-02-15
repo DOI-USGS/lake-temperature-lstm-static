@@ -117,9 +117,9 @@ def assemble_lake_data(site_id, config):
         # Split into segments
 
         # Let's make some rules for segments:
-        # 1. 400 day sequences
-        # 2. First 100 days are spinup, so don't have observations then
-        # 3. Each next sequence starts 200 days later than the previous
+        # 1. sequences are sequence_length days long
+        # 2. First spinup_time days are spinup, so don't have observations then
+        # 3. Each next sequence starts sequence_offset days later than the previous
         # 4. Discard sequences that lack observations
         # 5. We know going in that the first and last sequence have observations
 
