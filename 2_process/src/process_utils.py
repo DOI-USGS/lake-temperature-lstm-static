@@ -37,7 +37,7 @@ def elevation_function(lat, lon):
 
 def unzip_files(files, source_dir, destination_dir):
     """
-    Unzip files and save them to another directory. Files are saved 
+    Unzip files and save them to another directory.
 
     :param files: Files to unzip, with full paths
     :param source_dir: Directory to pull zipped files from.
@@ -106,11 +106,12 @@ def unzip_all(in_files, log_file, source_dir, destination_dir):
     """
     Unzip all files in in_files
 
+    :param in_files: List of files to unzip.
+    :param log_file: File to log results of unzipping.
     :param source_dir: Directory to pull zipped files from.
         This part of the path is removed from the beginning of files to determine where to save unzipped files.
-    :param in_files: 
-    :param log_file: 
-    :param destination_dir: 
+    :param destination_dir: Directory to save unzipped files to.
+        In each file path, source_dir is replaced with destination_dir to determine where to save unzipped files.
 
     """
 

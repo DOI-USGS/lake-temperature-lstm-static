@@ -4,9 +4,9 @@ import pandas as pd
 
 import sys
 sys.path.insert(1, './2_process/src')
-from process_mntoha import make_lake_metadata_augmented
-from process_mntoha import make_obs_interpolated
-from process_mntoha import unzip_all
+from process_utils import make_lake_metadata_augmented
+from process_utils import make_obs_interpolated
+from process_utils import unzip_all
 
 # Include is necessary to call get_mntoha_input_files
 # This include is redundant unless this file is referenced directly rather than through the main Snakefile
@@ -70,7 +70,7 @@ rule mntoha_lake_sequences:
         # site_id = lambda wildcards: wildcards.site_id,
         config = config["process_mntoha"]
     script:
-        "2_process/src/process_mntoha_lake.py"
+        "2_process/src/lake_sequences_mntoha.py"
 
 
 # Add elevation to MNTOHA lake metadata
