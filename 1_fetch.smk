@@ -25,10 +25,16 @@ def get_mntoha_input_files(wildcards):
     return input_files
 
 
-rule fetch_all:
+checkpoint fetch_all:
     input:
         "1_fetch/in/pull_date.txt",
         get_mntoha_input_files
+    output:
+        "1_fetch/out/downloaded_files.txt"
+    run:
+        with open(output[0], 'w') as f:
+            for input_file in input[1]:
+                f.write(input_file + '\n')
 
 
 rule fetch_mntoha_data_file:
