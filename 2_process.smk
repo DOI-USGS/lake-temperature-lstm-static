@@ -23,7 +23,12 @@ def mntoha_lake_sequence_files(wildcards):
 
 def save_sequences_summary(lake_sequence_files_input, summary_file):
     """
-    Summarize lake sequence files
+    Summarize the number of sequences with at least one temperature observation
+    for each lake, and save the result to csv
+
+    :param lake_sequence_files_input: the lake sequence files to summarize
+    :param summary_file: csv file with how many sequences are in each lake
+
     """
     sequence_counts = []
     for sequences_file in lake_sequence_files_input:
@@ -34,6 +39,53 @@ def save_sequences_summary(lake_sequence_files_input, summary_file):
         'num_sequences': sequence_counts
     })
     df_counts.to_csv(summary_file, index=False)
+
+
+def dynamic_filenames(wildcards):
+    """
+    Return the files that contain dynamic data that are needed to construct
+    sequences for a given lake.
+
+    This function also triggers four checkpoints:
+    1. fetch_mntoha_metadata to get lake_metadata.csv
+    2. unzip_archive for this lake's drivers
+    3. unzip_archive for this lake's clarity
+    3. unzip_archive for this lake's ice flags
+
+    :param wildcards: Snakemake wildcards (site_id from mntoha_lake_sequences).
+    :returns: List of 3 dynamic filenames: drivers, clarity, and ice flags
+
+    """
+    # make this function depend on fetch_mntoha_metadata
+    # needed because lake_metadata.csv is used to determine dynamic files
+    lake_metadata_file = checkpoints.fetch_mntoha_metadata.get(**wildcards).output[0]
+    lake_metadata = pd.read_csv(lake_metadata_file)
+    lake = lake_metadata.loc[lake_metadata['site_id']==wildcards.site_id].iloc[0]
+    # also make this function depend on unzip_archive
+    # needed to link unzipped files with unzip_archive rule
+    file_category = 'dynamic_mntoha'
+    drivers_directory = f'inputs_{lake.group_id}'
+    unzip_archive_drivers = checkpoints.unzip_archive.get(
+        file_category=file_category,
+        directory_name=drivers_directory
+    ).output[0]
+    clarity_directory = f'clarity_{lake.group_id}'
+    unzip_archive_clarity = checkpoints.unzip_archive.get(
+        file_category=file_category,
+        directory_name=clarity_directory
+    ).output[0]
+    ice_flags_directory = f'ice_flags_{lake.group_id}'
+    unzip_archive_ice_flags = checkpoints.unzip_archive.get(
+        file_category=file_category,
+        directory_name=ice_flags_directory
+    ).output[0]
+
+    # dynamic filenames
+    dynamic_dir = '1_fetch/out'
+    drivers_file = f'{dynamic_dir}/dynamic_mntoha/inputs_{lake.group_id}/{lake.meteo_filename}'
+    clarity_file = f'{dynamic_dir}/dynamic_mntoha/clarity_{lake.group_id}/gam_{lake.site_id}_clarity.csv'
+    ice_flags_file = f'{dynamic_dir}/dynamic_mntoha/ice_flags_{lake.group_id}/pb0_{lake.site_id}_ice_flags.csv'
+    return [drivers_file, clarity_file, ice_flags_file]
 
 
 # Summarize training sequences
@@ -49,13 +101,12 @@ rule process_mntoha:
 # Create .npy of input/output sequences for one lake to use for training and testing
 rule mntoha_lake_sequences:
     input:
-        config["process_mntoha"]["metadata_augmented_file"],
-        config["process_mntoha"]["obs_interpolated_file"],
-        config["process_mntoha"]["unzip_log_file"]
+        "2_process/tmp/mntoha/lake_metadata_augmented.csv",
+        "2_process/tmp/mntoha/temperature_observations_interpolated.csv",
+        dynamic_filenames
     output:
         "2_process/out/mntoha_sequences/sequences_{site_id}.npy"
     params:
-        # site_id = lambda wildcards: wildcards.site_id,
         config = config["process_mntoha"]
     script:
         "2_process/src/lake_sequences_mntoha.py"
@@ -93,9 +144,10 @@ def mntoha_obs_file(wildcards):
 # Add column of observation depths interpolated to nearest modeling mesh node
 rule interpolate_mntoha_obs_depths:
     input:
-        config["process_mntoha"]["unzip_log_file"],
+        # "1_fetch/out/obs_mntoha/temperature_observations/temperature_observations.csv"
+        mntoha_obs_file
     output:
-        config["process_mntoha"]["obs_interpolated_file"]
+        "2_process/tmp/mntoha/temperature_observations_interpolated.csv"
     params:
         depths=config["process_mntoha"]["depths"]
     script:
