@@ -107,7 +107,7 @@ rule mntoha_lake_sequences:
     output:
         "2_process/out/mntoha_sequences/sequences_{site_id}.npy"
     params:
-        config = config["process_mntoha"]
+        config = config
     script:
         "2_process/src/lake_sequences_mntoha.py"
 
@@ -149,7 +149,7 @@ rule interpolate_mntoha_obs_depths:
     output:
         "2_process/tmp/mntoha/temperature_observations_interpolated.csv"
     params:
-        depths=config["process_mntoha"]["depths"]
+        depths=config["depths"]
     script:
         "2_process/src/make_obs_interpolated.py"
 
