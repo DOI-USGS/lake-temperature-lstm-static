@@ -23,14 +23,7 @@
 *.shx
 *.patch
 *.pdf
-
-# Specific files and directories to exclude
-1_fetch/out
-2_process/log
-2_process/out
-
-# Specific files to include
-!/notebooks/Explore_MNTOHA_temperature_observations.html
+*.svg
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -165,3 +158,13 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .Rproj.user
+
+# Specific files and directories to exclude
+1_fetch/tmp
+1_fetch/out
+2_process/log
+2_process/tmp
+2_process/out
+
+# Specific files to include
+!/notebooks/Explore_MNTOHA_temperature_observations.html
