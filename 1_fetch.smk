@@ -38,3 +38,22 @@ rule fetch_mntoha_dynamic:
     script:
         "1_fetch/src/sb_fetch.py"
 
+
+# Unzip files from a zipped archive.
+#
+# This is a checkpoint because otherwise Snakemake won't track unzipped files
+# from an archive and will delete or ignore them. The output is a directory
+# because we don't know how many unzipped files there will be, but we know
+# which directory they'll be in after they are unzipped.
+checkpoint unzip_archive:
+    input:
+        "1_fetch/tmp/{file_category}/{directory_name}.zip"
+    output:
+        files = directory("1_fetch/out/{file_category}/{directory_name}")
+    params:
+        source_dir = "1_fetch/tmp",
+        destination_dir = "1_fetch/out"
+    script:
+        "1_fetch/src/unzip_file.py"
+
+

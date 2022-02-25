@@ -91,16 +91,3 @@ rule interpolate_mntoha_obs_depths:
     run:
         make_obs_interpolated(config["process_mntoha"]["obs_file"], output[0], config["process_mntoha"]["depths"])
 
-
-# Unzip all MNTOHA data downloaded from ScienceBase
-rule unzip_mntoha:
-    input: 
-        get_mntoha_input_files
-    output:
-        config["process_mntoha"]["unzip_log_file"]
-    run:
-        unzip_all(input,
-                  output[0],
-                  config["process_mntoha"]["source_dir"],
-                  config["process_mntoha"]["tmp_dir"])
-
