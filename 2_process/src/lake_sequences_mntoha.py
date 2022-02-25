@@ -45,20 +45,29 @@ def all_dates_depths(lake_obs_interpolated, depths, depth_col='interpolated_dept
     return obs_all
 
 
-def assemble_lake_data(site_id, config):
+def assemble_lake_data(site_id,
+                       metadata_augmented_file,
+                       obs_interpolated_file, 
+                       drivers_file,
+                       clarity_file,
+                       ice_flags_file,
+                       config):
     """
     Assemble raw data from one lake into equal-length sequences for
     training/testing.
 
     :param site_id: site_id of lake to process
+    :param metadata_augmented_file: lake metadata file, augmented with elevation
+    :param obs_interpolated_file: temperature observations file, interpolated
+        to LSTM depths
+    :param drivers_file: Meteorological drivers csv for this lake
+    :param clarity_file: Time-varying lake clarity csv
+    :param ice_flags_file: Time-varying ice flags csv for this lake
     :param config: Snakemake config for process_mntoha
     :returns: Numpy array of sequences with shape (# sequences, # features +
         depths, sequence_length)
 
     """
-    # Read directory where unzipped drivers are
-    tmp_dir = config['tmp_dir']
-
     # Read hyperparameters
     sequence_length = config['sequence_length']
     sequence_offset = config['sequence_offset']
@@ -68,7 +77,7 @@ def assemble_lake_data(site_id, config):
     depths = np.array(config['depths'])
 
     # Read temperature observations
-    obs_interpolated = pd.read_csv(config['obs_interpolated_file'], parse_dates=['date'])
+    obs_interpolated = pd.read_csv(obs_interpolated_file, parse_dates=['date'])
     # lake observations
     lake_obs_interpolated = obs_interpolated[obs_interpolated.site_id==site_id].copy()
     # determine if there are any observations
@@ -76,7 +85,7 @@ def assemble_lake_data(site_id, config):
         lake_sequences = np.empty((0))
     else:
         # Read metadata with elevation
-        lake_metadata_augmented = pd.read_csv(config['metadata_augmented_file'])
+        lake_metadata_augmented = pd.read_csv(metadata_augmented_file)
         # NOTE: If there are duplicates, the next line will only grap the first.
         # If there are no matches, it will throw an error
         lake = lake_metadata_augmented[lake_metadata_augmented.site_id==site_id].iloc[0,:]
@@ -91,19 +100,16 @@ def assemble_lake_data(site_id, config):
 
         # Join drivers
 
-        drivers_file = f'{tmp_dir}/drivers_mntoha/inputs_{lake.group_id}/{lake.meteo_filename}'
         drivers = pd.read_csv(drivers_file, parse_dates=['time'], index_col='time')
         # TODO: Check for nans
         # drivers.isna().any()
         obs_all = obs_all.join(drivers, how='left')
 
         # Join clarity
-        clarity_file = f'{tmp_dir}/drivers_mntoha/clarity_{lake.group_id}/gam_{lake.site_id}_clarity.csv'
         clarity = pd.read_csv(clarity_file, parse_dates=['date'], index_col='date')
         obs_all = obs_all.join(clarity, how='left')
 
         # Join ice flags
-        ice_flags_file = f'{tmp_dir}/drivers_mntoha/ice_flags_{lake.group_id}/pb0_{lake.site_id}_ice_flags.csv'
         ice_flags = pd.read_csv(ice_flags_file, parse_dates=['date'], index_col='date')
         obs_all = obs_all.join(ice_flags, how='left')
 
@@ -112,7 +118,8 @@ def assemble_lake_data(site_id, config):
         obs_all['lon'] = lake['centroid_lon']
         obs_all['lat'] = lake['centroid_lat']
         obs_all['elevation'] = lake['elevation']
-        # Now obs_all is one long timeseries with depth-specific observations, drivers, and attributes as columns
+        # Now obs_all is one long timeseries with depth-specific observations,
+        # drivers, clarity, ice_flags, and attributes as columns
 
         # Split into segments
 
@@ -147,19 +154,48 @@ def assemble_lake_data(site_id, config):
     return lake_sequences
 
 
-def main(site_id, out_file, config):
+def main(site_id,
+         out_file,
+         metadata_augmented_file,
+         obs_interpolated_file,
+         drivers_file,
+         clarity_file,
+         ice_flags_file,
+         config):
     """
     Process raw data for one MNTOHA lake
     Save those data to a numpy file
 
     :param site_id: site_id of lake to process
     :param out_file: Filename of npy file to save
+    :param metadata_augmented_file: lake metadata file, augmented with elevation
+    :param obs_interpolated_file: temperature observations file, interpolated
+        to LSTM depths
+    :param drivers_file: Meteorological drivers csv for this lake
+    :param clarity_file: Time-varying lake clarity csv
+    :param ice_flags_file: Time-varying ice flags csv for this lake
     :param config: Snakemake config for process_mntoha
 
     """
-    lake_sequences = assemble_lake_data(site_id, config)
+    lake_sequences = assemble_lake_data(
+        site_id,
+        metadata_augmented_file,
+        obs_interpolated_file,
+        drivers_file,
+        clarity_file,
+        ice_flags_file,
+        config
+    )
     np.save(out_file, lake_sequences, allow_pickle=True)
 
 
 if __name__ == '__main__':
-    main(snakemake.wildcards['site_id'], snakemake.output[0], snakemake.params['config'])
+    main(snakemake.wildcards['site_id'],
+         snakemake.output[0], # npy file
+         snakemake.input[0], # metadata_augmented_file
+         snakemake.input[1], # obs_interpolated_file
+         snakemake.input[2], # drivers_file
+         snakemake.input[3], # clarity_file
+         snakemake.input[4], # ice_flags_file
+         snakemake.params['config'])
+
