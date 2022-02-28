@@ -17,13 +17,9 @@ def unzip_file(filename, source_dir, destination_dir):
     if os.path.samefile(source_dir, os.path.commonpath([filename, source_dir])):
         relfile = os.path.relpath(filename, source_dir)
         destination_file = os.path.join(destination_dir, os.path.splitext(relfile)[0])
-        try:
-            with zipfile.ZipFile(filename, 'r') as zf:
-                unzipped_files = zf.namelist()
-                zf.extractall(destination_file)
-        except Exception as e:
-            print(f'Hey, {filename} is not a zip file')
-            raise(e)
+        with zipfile.ZipFile(filename, 'r') as zf:
+            unzipped_files = zf.namelist()
+            zf.extractall(destination_file)
     else:
         raise FileNotFoundError(f'File {f} not in directory {source_dir}')
     return unzipped_files
