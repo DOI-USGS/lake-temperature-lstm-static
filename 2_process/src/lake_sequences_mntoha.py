@@ -64,8 +64,8 @@ def assemble_lake_data(site_id,
     :param clarity_file: Time-varying lake clarity csv
     :param ice_flags_file: Time-varying ice flags csv for this lake
     :param config: Snakemake config for process_mntoha
-    :returns: Numpy array of sequences with shape (# sequences, # features +
-        depths, sequence_length)
+    :returns: Numpy array of sequences with shape (# sequences,
+        sequence_length, # features + depths)
 
     """
     # Read hyperparameters
@@ -145,6 +145,7 @@ def assemble_lake_data(site_id,
         mask_nan_sequences = np.any(np.any(~np.isnan(all_sequences[:, :len(depths), :]), axis=2), axis=1)
         # sequences to keep
         lake_sequences = all_sequences[mask_nan_sequences, :, :].transpose((0, 2, 1))
+        # Now, shape is (# sequences, sequence_length, # features + depths)
 
         # also keep the last `sequence_length` days, since the final observation is always non-NaN,
         # unless all_sequences already has that last sequence 
