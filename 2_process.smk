@@ -13,7 +13,7 @@ def mntoha_lake_sequence_files(wildcards):
     :returns: List of lake training/testing sequence files.
 
     """
-    # make this function dependent on fetch_all
+    # make this function dependent on fetch_mntoha_metadata
     # needed because lake_metadata.csv is used to determine lake_sequence_files
     lake_metadata_file = checkpoints.fetch_mntoha_metadata.get(**wildcards).output[0]
     lake_metadata = pd.read_csv(lake_metadata_file)
