@@ -13,15 +13,15 @@ def unzip_file(filename, source_dir, destination_dir):
     :returns: list of paths to unzipped files
 
     """
-    # check that file is inside source_dir
+    # check that the path to filename includes source_dir
     if os.path.samefile(source_dir, os.path.commonpath([filename, source_dir])):
         relfile = os.path.relpath(filename, source_dir)
-        destination_file = os.path.join(destination_dir, os.path.splitext(relfile)[0])
+        destination_subdir = os.path.join(destination_dir, os.path.splitext(relfile)[0])
         with zipfile.ZipFile(filename, 'r') as zf:
             unzipped_files = zf.namelist()
-            zf.extractall(destination_file)
+            zf.extractall(destination_subdir)
     else:
-        raise FileNotFoundError(f'File {f} not in directory {source_dir}')
+        raise FileNotFoundError(f'The path to {filename} does not include the directory {source_dir}.')
     return unzipped_files
 
 
