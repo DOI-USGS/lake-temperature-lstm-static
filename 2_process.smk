@@ -81,10 +81,9 @@ def dynamic_filenames(wildcards):
     ).output[0]
 
     # dynamic filenames
-    dynamic_dir = '1_fetch/out'
-    drivers_file = f'{dynamic_dir}/dynamic_mntoha/inputs_{lake.group_id}/{lake.meteo_filename}'
-    clarity_file = f'{dynamic_dir}/dynamic_mntoha/clarity_{lake.group_id}/gam_{lake.site_id}_clarity.csv'
-    ice_flags_file = f'{dynamic_dir}/dynamic_mntoha/ice_flags_{lake.group_id}/pb0_{lake.site_id}_ice_flags.csv'
+    drivers_file = f'{unzip_archive_drivers}/{lake.meteo_filename}'
+    clarity_file = f'{unzip_archive_clarity}/gam_{lake.site_id}_clarity.csv'
+    ice_flags_file = f'{unzip_archive_ice_flags}/pb0_{lake.site_id}_ice_flags.csv'
     return [drivers_file, clarity_file, ice_flags_file]
 
 
