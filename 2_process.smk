@@ -41,7 +41,7 @@ def save_sequences_summary(lake_sequence_files_input, summary_file):
     df_counts.to_csv(summary_file, index=False)
 
 
-def dynamic_filenames(wildcards):
+def dynamic_filenames(site_id, file_category = 'dynamic_mntoha'):
     """
     Return the files that contain dynamic data that are needed to construct
     sequences for a given lake.
@@ -52,18 +52,19 @@ def dynamic_filenames(wildcards):
     3. unzip_archive for this lake's clarity
     3. unzip_archive for this lake's ice flags
 
-    :param wildcards: Snakemake wildcards (site_id from mntoha_lake_sequences).
+    :param site_id: NHDHR lake ID
+    :param file_category: category of files, e.g., dynamic_mntoha. Used by
+    unzip_archive to determine parent directory.
     :returns: List of 3 dynamic filenames: drivers, clarity, and ice flags
 
     """
     # make this function depend on fetch_mntoha_metadata
     # needed because lake_metadata.csv is used to determine dynamic files
-    lake_metadata_file = checkpoints.fetch_mntoha_metadata.get(**wildcards).output[0]
+    lake_metadata_file = checkpoints.fetch_mntoha_metadata.get().output[0]
     lake_metadata = pd.read_csv(lake_metadata_file)
-    lake = lake_metadata.loc[lake_metadata['site_id']==wildcards.site_id].iloc[0]
+    lake = lake_metadata.loc[lake_metadata['site_id']==site_id].iloc[0]
     # also make this function depend on unzip_archive
     # needed to link unzipped files with unzip_archive rule
-    file_category = 'dynamic_mntoha'
     drivers_directory = f'inputs_{lake.group_id}'
     unzip_archive_drivers = checkpoints.unzip_archive.get(
         file_category=file_category,
@@ -102,7 +103,7 @@ rule mntoha_lake_sequences:
     input:
         "2_process/tmp/mntoha/lake_metadata_augmented.csv",
         "2_process/tmp/mntoha/temperature_observations_interpolated.csv",
-        dynamic_filenames
+        lambda wildcards: dynamic_filenames(wildcards.site_id, file_category='dynamic_mntoha')
     output:
         "2_process/out/mntoha_sequences/sequences_{site_id}.npy"
     params:
