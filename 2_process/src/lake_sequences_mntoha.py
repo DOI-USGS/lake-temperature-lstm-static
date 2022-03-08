@@ -61,9 +61,9 @@ def assemble_lake_data(site_id,
     :param obs_interpolated_file: temperature observations file, interpolated
         to LSTM depths
     :param drivers_file: Meteorological drivers csv for this lake
-    :param clarity_file: Time-varying lake clarity csv
+    :param clarity_file: Time-varying lake clarity csv for this lake
     :param ice_flags_file: Time-varying ice flags csv for this lake
-    :param config: Snakemake config for process_mntoha
+    :param config: Snakemake config for 2_process
     :returns: Numpy array of sequences with shape (# sequences,
         sequence_length, # features + depths)
 
