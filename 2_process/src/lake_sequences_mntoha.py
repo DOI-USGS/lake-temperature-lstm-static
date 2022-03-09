@@ -109,34 +109,33 @@ def assemble_lake_data(site_id,
         lake = lake_metadata_augmented[lake_metadata_augmented.site_id==site_id].iloc[0,:]
 
         # Fill NaNs for missing obs
-        obs_all = all_dates_depths(lake_obs_interpolated,
-                                   depths,
-                                   pad_before_days=spinup_time,
-                                   min_days=sequence_length)
-        # Now obs_all has dimensions of len(date_range) by len(depths)
+        obs_full = all_dates_depths(lake_obs_interpolated,
+                                    depths,
+                                    pad_before_days=spinup_time,
+                                    min_days=sequence_length)
+        # Now obs_full has dimensions of len(date_range) by len(depths)
         # values are NaN wherever there are no observations
 
-        # Join drivers
-
+        # Join drivers by date
         drivers = pd.read_csv(drivers_file, parse_dates=['time'], index_col='time')
         # TODO: Check for nans
         # drivers.isna().any()
-        obs_all = obs_all.join(drivers, how='left')
+        obs_full = obs_full.join(drivers, how='left')
 
-        # Join clarity
+        # Join clarity by date
         clarity = pd.read_csv(clarity_file, parse_dates=['date'], index_col='date')
-        obs_all = obs_all.join(clarity, how='left')
+        obs_full = obs_full.join(clarity, how='left')
 
-        # Join ice flags
+        # Join ice flags by date
         ice_flags = pd.read_csv(ice_flags_file, parse_dates=['date'], index_col='date')
-        obs_all = obs_all.join(ice_flags, how='left')
+        obs_full = obs_full.join(ice_flags, how='left')
 
         # Get attributes
-        obs_all['area'] = lake['area']
-        obs_all['lon'] = lake['centroid_lon']
-        obs_all['lat'] = lake['centroid_lat']
-        obs_all['elevation'] = lake['elevation']
-        # Now obs_all is one long timeseries with depth-specific observations,
+        obs_full['area'] = lake['area']
+        obs_full['lon'] = lake['centroid_lon']
+        obs_full['lat'] = lake['centroid_lat']
+        obs_full['elevation'] = lake['elevation']
+        # Now obs_full is one long timeseries with depth-specific observations,
         # drivers, clarity, ice_flags, and attributes as columns
 
         # Split into segments
@@ -149,12 +148,12 @@ def assemble_lake_data(site_id,
         # 5. We know going in that the first and last sequence have observations
 
         # Convert dataframe to numpy array
-        obs_all_array = obs_all.to_numpy(dtype=np.float32)
-        # Create a strided view into obs_all_array
+        obs_full_array = obs_full.to_numpy(dtype=np.float32)
+        # Create a strided view into obs_full_array
         # This creates a numpy object with sequences of length sequence_length
         # and offsets of sequence_offset without making a copy the array
         all_sequences = np.lib.stride_tricks.sliding_window_view(
-            obs_all_array, sequence_length, axis=0
+            obs_full_array, sequence_length, axis=0
         )[::sequence_offset, :]
         # shape is now (# sequences, # features + depths, sequence_length)
         # The first `len(depths)` elements in the middle dimension are observations
@@ -167,8 +166,8 @@ def assemble_lake_data(site_id,
 
         # also keep the last `sequence_length` days, since the final observation is always non-NaN,
         # unless all_sequences already has that last sequence 
-        if (obs_all_array.shape[0] - sequence_length) % sequence_offset != 0:
-            lake_sequences = np.concatenate((lake_sequences, np.array([obs_all_array[-sequence_length:, :]])), axis=0)
+        if (obs_full_array.shape[0] - sequence_length) % sequence_offset != 0:
+            lake_sequences = np.concatenate((lake_sequences, np.array([obs_full_array[-sequence_length:, :]])), axis=0)
 
     return lake_sequences
 
