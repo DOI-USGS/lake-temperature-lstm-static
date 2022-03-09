@@ -21,28 +21,37 @@ def all_dates_depths(lake_obs_interpolated, depths, depth_col='interpolated_dept
     pad_after_days_td = np.timedelta64(pad_after_days, 'D')
     min_days_td = np.timedelta64(min_days, 'D')
     one_day = np.timedelta64(1, 'D')
-    # buffer start_date by pad_before_days days
+    # start_date is pad_before_days before the date of the earliest observation
     start_date = lake_obs_interpolated.date.min() - pad_before_days_td
-    # buffer end_date by pad_after_days days
+    # end_date is pad_after_days after the date of the latest observation
     end_date = lake_obs_interpolated.date.max() + pad_after_days_td
-    # check if enough days are included, pad if not
+    # Ensure that at least min_days days are included
+    # If not, pad to the left (shift the start date earlier)
     if end_date - start_date + one_day < min_days_td:
         start_date = end_date - min_days_td + one_day
     date_range = pd.date_range(start=start_date, end=end_date)
 
-    # create MultiIndex of all combinations of dates and depths
-    midx = pd.MultiIndex.from_product([date_range, depths], names=['date', depth_col])
-    # Average duplicate measurements (same day, same nearest depth)
-    obs_midx = lake_obs_interpolated.groupby(['date', depth_col]).temp.mean().to_frame()
-    obs_all = obs_midx.reindex(midx, fill_value=np.NaN)
+    # Now take sparse observations specific to a few depths and a few days, 
+    # and create a full DataFrame of all depths and days, with NaN values for missing observations.
 
-    # reshape to have one column per depth
-    obs_all = obs_all.unstack()
-    # flatten column levels
-    obs_all.columns = [' '.join([str(s) for s in col]).strip() for col in obs_all.columns.values]
-    # Now obs_all has dimensions of len(date_range) by len(depths)
-    # values are NaN wherever there are no observations
-    return obs_all
+    # Take only the columns we need
+    obs = lake_obs_interpolated[['date', depth_col, 'temp']]
+    # Average duplicate measurements (same day, same nearest depth)
+    # The resulting DataFrame has a MultiIndex of (date, depth)
+    obs_midx = obs.groupby(['date', depth_col]).mean()
+    # Create a full MultiIndex of all possible combinations of dates and depths
+    midx = pd.MultiIndex.from_product([date_range, depths], names=['date', depth_col])
+    # Expand to the full set of date ranges and depths set by the MultiIndex 
+    # Values are NaN for date-depth combinations that have no observations
+    obs_full = obs_midx.reindex(midx, fill_value=np.NaN)
+
+    # Reshape to have one column per depth
+    obs_full = obs_full.unstack()
+    # unstack() generates two column levels: temp and interpolated depths
+    # Here we flatten to one level, naming columns 'temp_0.0', 'temp_0.5', etc.
+    obs_full.columns = [f'{i}_{j}' for i,j in obs_full.columns.values]
+    # Now obs_full has dimensions of len(date_range) by len(depths)
+    return obs_full
 
 
 def assemble_lake_data(site_id,
