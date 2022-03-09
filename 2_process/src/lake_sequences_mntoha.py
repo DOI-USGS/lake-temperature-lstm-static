@@ -1,7 +1,14 @@
 import numpy as np
 import pandas as pd
 
-def all_dates_depths(lake_obs_interpolated, depths, depth_col='interpolated_depth', pad_before_days=0, pad_after_days=0, min_days=1):
+def all_dates_depths(lake_obs_interpolated, 
+                     depths,
+                     temp_col='temp',
+                     depth_col='interpolated_depth',
+                     date_col='date',
+                     pad_before_days=0,
+                     pad_after_days=0,
+                     min_days=1):
     """
     Create a DataFrame with one column per depth and one row for every day from
     `pad_before_days` days before the first observation until `pad_after_days`
@@ -9,7 +16,9 @@ def all_dates_depths(lake_obs_interpolated, depths, depth_col='interpolated_dept
 
     :param lake_obs_interpolated: DataFrame of observations for one lake, interpolated to the depths in the list `depths`.
     :param depths: Full list of depths at which temperatures will be provided by the trained model.
+    :param temp_col: Name of DataFrame column with temperature values. (Default value = 'temp')
     :param depth_col: Name of DataFrame column with depth values to match up with `depths`. (Default value = 'interpolated_depth')
+    :param date_col: Name of DataFrame column with observation dates. (Default value = 'date')
     :param pad_before_days: Number of days to pad before the first observation (Default value = 0)
     :param pad_after_days: Number of days to pad after the last observation (Default value = 0)
     :param min_days: Minimum number of days included in output DataFrame (Default value = 1)
@@ -35,12 +44,12 @@ def all_dates_depths(lake_obs_interpolated, depths, depth_col='interpolated_dept
     # and create a full DataFrame of all depths and days, with NaN values for missing observations.
 
     # Take only the columns we need
-    obs = lake_obs_interpolated[['date', depth_col, 'temp']]
+    obs = lake_obs_interpolated[[date_col, depth_col, temp_col]]
     # Average duplicate measurements (same day, same nearest depth)
     # The resulting DataFrame has a MultiIndex of (date, depth)
-    obs_midx = obs.groupby(['date', depth_col]).mean()
+    obs_midx = obs.groupby([date_col, depth_col]).mean()
     # Create a full MultiIndex of all possible combinations of dates and depths
-    midx = pd.MultiIndex.from_product([date_range, depths], names=['date', depth_col])
+    midx = pd.MultiIndex.from_product([date_range, depths], names=[date_col, depth_col])
     # Expand to the full set of date ranges and depths set by the MultiIndex 
     # Values are NaN for date-depth combinations that have no observations
     obs_full = obs_midx.reindex(midx, fill_value=np.NaN)
