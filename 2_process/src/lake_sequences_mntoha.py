@@ -173,10 +173,11 @@ def assemble_lake_data(site_id,
         # and offsets of sequence_offset, without making an in-memory copy of the array
         all_sequences = np.lib.stride_tricks.sliding_window_view(
             obs_full_array, sequence_length, axis=0
-        )[::sequence_offset]
+        )[::sequence_offset, :, :]
         # The shape of all_sequences is (# sequences, # depths + # features, sequence_length).
 
         # Only write sequences to file if they contain temperature observations
+        # The first len(depths) elements in the second dimension are temperature observations.
         sequences_have_no_obs = np.all(np.isnan(all_sequences[:, :len(depths), :]), axis=(1, 2))
         sequences_have_obs = np.logical_not(sequences_have_no_obs)
         # Sequences to save
@@ -188,6 +189,8 @@ def assemble_lake_data(site_id,
         # to truncation. So, add one more sequence that contains the final
         # sequence_length days, unless all_sequences happened to line up
         # perfectly such that the last sequence included that final day.
+        # Recall, the shape of obs_full_array is 
+        # (len(date range), # depths + # features)
         if (obs_full_array.shape[0] - sequence_length) % sequence_offset != 0:
             lake_sequences = np.concatenate((lake_sequences, np.array([obs_full_array[-sequence_length:, :]])), axis=0)
 
