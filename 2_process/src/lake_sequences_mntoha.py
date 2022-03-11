@@ -71,12 +71,12 @@ def assemble_lake_data(site_id,
                        ice_flags_file,
                        config):
     """
-    Assemble raw data from one lake into equal-length sequences for
-    training/testing.
+    Assemble features and observed temperatures from one lake into equal-length
+    sequences for training/testing.
 
-    :param site_id: site_id of lake to process
-    :param metadata_augmented_file: lake metadata file, augmented with elevation
-    :param obs_interpolated_file: temperature observations file, interpolated
+    :param site_id: ID of lake to process
+    :param metadata_augmented_file: Lake metadata file, augmented with elevation
+    :param obs_interpolated_file: Temperature observations file, interpolated
         to LSTM depths
     :param drivers_file: Meteorological drivers csv for this lake
     :param clarity_file: Time-varying lake clarity csv for this lake
@@ -86,40 +86,47 @@ def assemble_lake_data(site_id,
         sequence_length, # features + depths)
 
     """
-    # Read hyperparameters
+    # Settings for forming LSTM training sequences
+    # Length of each sequence in days
     sequence_length = config['sequence_length']
+    # Days between the start of one sequence and the start of the next
     sequence_offset = config['sequence_offset']
-    # pad time before 1st obs, e.g., 100 days
+    # Number of days before 1st obs, e.g., 100 days
     spinup_time = config['spinup_time'] 
     # Discretized lake depths to use for LSTM
     depths = np.array(config['depths'])
 
-    # Read temperature observations
+    # All temperature observations interpolated to discretized depths
     obs_interpolated = pd.read_csv(obs_interpolated_file, parse_dates=['date'])
-    # lake observations
+    # Observations for this lake
     lake_obs_interpolated = obs_interpolated[obs_interpolated.site_id==site_id].copy()
-    # determine if there are any observations
+    # Only form sequences if there are any observations in this lake
     if len(lake_obs_interpolated) == 0:
         lake_sequences = np.empty((0))
     else:
         # Read metadata with elevation
         lake_metadata_augmented = pd.read_csv(metadata_augmented_file)
-        # NOTE: If there are duplicates, the next line will only grap the first.
-        # If there are no matches, it will throw an error
+        # NOTE: If there are duplicate sites in lake_metadata_augmented,
+        # only the first will be used.
+        # If there are no matches, an IndexError will be raised.
         lake = lake_metadata_augmented[lake_metadata_augmented.site_id==site_id].iloc[0,:]
 
-        # Fill NaNs for missing obs
+        # Create one large DataFrame of temperatures at all days and all discretized depths
         obs_full = all_dates_depths(lake_obs_interpolated,
                                     depths,
                                     pad_before_days=spinup_time,
                                     min_days=sequence_length)
         # Now obs_full has dimensions of len(date_range) by len(depths)
-        # values are NaN wherever there are no observations
+        # Values are NaN wherever/whenever there are no observations
+
+        # There are some NaN values in the clarity and ice flag data.
+        # There are multiple ways to deal with NaN values in inputs:
+        # interpolate to fill them, skip over them, or remove sequences
+        # containing NaNs entirely. At this point, allow NaN values into the
+        # sites. Later code will handle NaN values.
 
         # Join drivers by date
         drivers = pd.read_csv(drivers_file, parse_dates=['time'], index_col='time')
-        # TODO: Check for nans
-        # drivers.isna().any()
         obs_full = obs_full.join(drivers, how='left')
 
         # Join clarity by date
@@ -138,34 +145,36 @@ def assemble_lake_data(site_id,
         # Now obs_full is one long timeseries with depth-specific observations,
         # drivers, clarity, ice_flags, and attributes as columns
 
-        # Split into segments
+        # Split into sequences
 
-        # Let's make some rules for segments:
-        # 1. sequences are sequence_length days long
-        # 2. First spinup_time days are spinup, so don't have observations then
-        # 3. Each next sequence starts sequence_offset days later than the previous
-        # 4. Discard sequences that lack observations
-        # 5. We know going in that the first and last sequence have observations
+        # Let's make some rules for sequences:
+        # 1. Sequences are sequence_length days long
+        # 2. Each next sequence starts sequence_offset days later than the previous
+        # 3. Discard sequences that lack observations
+        # 4. We know going in that the first and last sequences have observations
 
         # Convert dataframe to numpy array
         obs_full_array = obs_full.to_numpy(dtype=np.float32)
         # Create a strided view into obs_full_array
         # This creates a numpy object with sequences of length sequence_length
-        # and offsets of sequence_offset without making a copy the array
+        # and offsets of sequence_offset, without making an in-memory copy of the array
         all_sequences = np.lib.stride_tricks.sliding_window_view(
             obs_full_array, sequence_length, axis=0
-        )[::sequence_offset, :]
-        # shape is now (# sequences, # features + depths, sequence_length)
+        )[::sequence_offset]
+        # The shape of all_sequences is (# sequences, # features + depths, sequence_length)
         # The first `len(depths)` elements in the middle dimension are observations
 
-        # Mask sequences that have only NaN observations
-        mask_nan_sequences = np.any(np.any(~np.isnan(all_sequences[:, :len(depths), :]), axis=2), axis=1)
-        # sequences to keep
-        lake_sequences = all_sequences[mask_nan_sequences, :, :].transpose((0, 2, 1))
-        # Now, shape is (# sequences, sequence_length, # features + depths)
+        # Only write sequences to file if they have temperature observations
+        sequences_have_no_obs = np.all(np.isnan(all_sequences[:, :len(depths), :]), axis=(1, 2))
+        sequences_have_obs = np.logical_not(sequences_have_no_obs)
+        # Sequences to save
+        lake_sequences = all_sequences[sequences_have_obs, :, :].transpose((0, 2, 1))
+        # After transpose, shape is (# sequences, sequence_length, # features + depths)
 
-        # also keep the last `sequence_length` days, since the final observation is always non-NaN,
-        # unless all_sequences already has that last sequence 
+        # The final observation is always non-NaN, but the strided view's
+        # sequences probably don't include the final day of the time period due to truncation.
+        # So, add one more sequence that contains the last sequence_length days,
+        # unless all_sequences happened to line up perfectly and include that last sequence.
         if (obs_full_array.shape[0] - sequence_length) % sequence_offset != 0:
             lake_sequences = np.concatenate((lake_sequences, np.array([obs_full_array[-sequence_length:, :]])), axis=0)
 
