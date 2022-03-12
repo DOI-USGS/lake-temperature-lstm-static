@@ -5,19 +5,33 @@ import pandas as pd
 configfile: "2_process/process_config.yaml"
 
 
-def mntoha_lake_sequence_files(wildcards):
+def get_lake_sequence_files(sequence_file_template, data_source):
     """
-    List all MNTOHA lake sequence .npy files for training and testing.
+    List all lake sequence .npy files for training and testing.
 
-    :param wildcards: Snakemake wildcards (empty).
+    :param sequence_file_template: Format string with two {} replacement
+        fields. Serves as a Snakemake template for lake sequence .npy files.
+        The first {} replacement field is for the data source, and the second
+        {} replacement field is for the lake's site ID.
+    :param data_source: Source of data, e.g., 'mntoha'. Used to read
+        corresponding lake metadata file, and to construct list of lake
+        sequence files.
     :returns: List of lake training/testing sequence files.
 
     """
-    # make this function dependent on fetch_mntoha_metadata
-    # needed because lake_metadata.csv is used to determine lake_sequence_files
-    lake_metadata_file = checkpoints.fetch_mntoha_metadata.get(**wildcards).output[0]
+    # Make this function dependent on lake metadata
+    # Needed because lake metadata is used to determine lake_sequence_files
+    if data_source == 'mntoha':
+        lake_metadata_file = checkpoints.fetch_mntoha_metadata.get().output[0]
+    else:
+        raise ValueError(f'Data source {data_source} not recognized')
     lake_metadata = pd.read_csv(lake_metadata_file)
-    lake_sequence_files = [os.path.join('2_process/out/mntoha_sequences', f'sequences_{site_id}.npy') for site_id in lake_metadata.site_id]
+    # Fill in the two replacement fields in sequence_file_template with the
+    # data source and the lake site ID, respectively.
+    lake_sequence_files = [
+        sequence_file_template.format(data_source, site_id) 
+        for site_id in lake_metadata.site_id
+    ]
     return lake_sequence_files
 
 
@@ -89,11 +103,14 @@ def dynamic_filenames(site_id, file_category = 'dynamic_mntoha'):
 
 
 # Summarize training sequences
-rule process_mntoha:
+rule process_sequences:
     input:
-        mntoha_lake_sequence_files
+        lambda wildcards: get_lake_sequence_files(
+            '2_process/out/{}_sequences/sequences_{}.npy',
+            wildcards.data_source
+        )
     output:
-        "2_process/out/mntoha_sequences/mntoha_sequences_summary.csv"
+        "2_process/out/{data_source}_sequences/{data_source}_sequences_summary.csv"
     run:
         save_sequences_summary(input, output[0])
 
