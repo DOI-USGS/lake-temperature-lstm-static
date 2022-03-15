@@ -217,7 +217,7 @@ def main(site_id,
     :param drivers_file: Meteorological drivers csv for this lake
     :param clarity_file: Time-varying lake clarity csv
     :param ice_flags_file: Time-varying ice flags csv for this lake
-    :param config: Snakemake config for process_mntoha
+    :param config: Snakemake config for 2_process
 
     """
     lake_sequences = assemble_lake_data(

@@ -46,6 +46,7 @@ def save_sequences_summary(lake_sequence_files_input, summary_file):
     """
     sequence_counts = []
     for sequences_file in lake_sequence_files_input:
+        # Sequence files have shape (# sequences, sequence length, # depths + # features)
         num_sequences = np.load(sequences_file).shape[0] 
         sequence_counts.append(num_sequences)
     df_counts = pd.DataFrame(data={
