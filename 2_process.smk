@@ -125,6 +125,9 @@ rule mntoha_lake_sequences:
     output:
         "2_process/out/mntoha_sequences/sequences_{site_id}.npy"
     params:
+        temp_col = 'temp',
+        depth_col = 'interpolated_depth',
+        date_col = 'date',
         config = config
     script:
         "2_process/src/lake_sequences_mntoha.py"

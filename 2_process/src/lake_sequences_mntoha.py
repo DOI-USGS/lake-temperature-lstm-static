@@ -3,9 +3,9 @@ import pandas as pd
 
 def all_dates_depths(lake_obs_interpolated, 
                      depths,
-                     temp_col='temp',
-                     depth_col='interpolated_depth',
-                     date_col='date',
+                     temp_col,
+                     depth_col,
+                     date_col,
                      pad_before_days=0,
                      pad_after_days=0,
                      min_days=1):
@@ -72,6 +72,9 @@ def assemble_lake_data(site_id,
                        drivers_file,
                        clarity_file,
                        ice_flags_file,
+                       temp_col,
+                       depth_col,
+                       date_col,
                        config):
     """
     Assemble features and observed temperatures from one lake into equal-length
@@ -122,6 +125,9 @@ def assemble_lake_data(site_id,
         #     b) ensure that the date range is at least sequence_length long
         obs_full = all_dates_depths(lake_obs_interpolated,
                                     depths,
+                                    temp_col,
+                                    depth_col,
+                                    date_col,
                                     pad_before_days=spinup_time,
                                     min_days=sequence_length)
         # obs_full now has dimensions of len(date range) by len(depths)
@@ -204,6 +210,9 @@ def main(site_id,
          drivers_file,
          clarity_file,
          ice_flags_file,
+         temp_col,
+         depth_col,
+         date_col,
          config):
     """
     Process raw data for one MNTOHA lake
@@ -227,6 +236,9 @@ def main(site_id,
         drivers_file,
         clarity_file,
         ice_flags_file,
+        temp_col,
+        depth_col,
+        date_col,
         config
     )
     np.save(out_file, lake_sequences, allow_pickle=True)
@@ -240,5 +252,8 @@ if __name__ == '__main__':
          snakemake.input[2], # drivers_file
          snakemake.input[3], # clarity_file
          snakemake.input[4], # ice_flags_file
+         snakemake.params['temp_col'],
+         snakemake.params['depth_col'],
+         snakemake.params['date_col'],
          snakemake.params['config'])
 
