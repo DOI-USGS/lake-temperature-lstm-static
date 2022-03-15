@@ -5,6 +5,24 @@ import pandas as pd
 configfile: "2_process/process_config.yaml"
 
 
+def trigger_unzip_archive(file_category, archive_name):
+    """
+    Trigger checkpoint to unzip zipped directory
+
+    :param file_category: Category of files, e.g., dynamic_mntoha. Used by
+        unzip_archive to determine parent directory.
+    :param archive_name: Name of zip archive to be unzipped, and name of
+        directory to unzip to
+
+    :returns: Path to unzipped archive, relative to repository root directory
+    """
+    unzipped_archive = checkpoints.unzip_archive.get(
+        file_category=file_category,
+        archive_name=archive_name
+    ).output[0]
+    return(unzipped_archive)
+
+
 def get_lake_sequence_files(sequence_file_template, data_source):
     """
     List all lake sequence .npy files for training and testing.
@@ -56,7 +74,7 @@ def save_sequences_summary(lake_sequence_files_input, summary_file):
     df_counts.to_csv(summary_file, index=False)
 
 
-def dynamic_filenames(site_id, file_category = 'dynamic_mntoha'):
+def dynamic_filenames(site_id, file_category):
     """
     Return the files that contain dynamic data that are needed to construct
     sequences for a given lake.
@@ -68,8 +86,8 @@ def dynamic_filenames(site_id, file_category = 'dynamic_mntoha'):
     3. unzip_archive for this lake's ice flags
 
     :param site_id: NHDHR lake ID
-    :param file_category: category of files, e.g., dynamic_mntoha. Used by
-    unzip_archive to determine parent directory.
+    :param file_category: Category of files, e.g., dynamic_mntoha. Used by
+        unzip_archive to determine parent directory.
     :returns: List of 3 dynamic filenames: drivers, clarity, and ice flags
 
     """
@@ -81,20 +99,11 @@ def dynamic_filenames(site_id, file_category = 'dynamic_mntoha'):
     # also make this function depend on unzip_archive
     # needed to link unzipped files with unzip_archive rule
     drivers_directory = f'inputs_{lake.group_id}'
-    unzip_archive_drivers = checkpoints.unzip_archive.get(
-        file_category=file_category,
-        directory_name=drivers_directory
-    ).output[0]
+    unzip_archive_drivers = trigger_unzip_archive(file_category, drivers_directory)
     clarity_directory = f'clarity_{lake.group_id}'
-    unzip_archive_clarity = checkpoints.unzip_archive.get(
-        file_category=file_category,
-        directory_name=clarity_directory
-    ).output[0]
+    unzip_archive_clarity = trigger_unzip_archive(file_category, clarity_directory)
     ice_flags_directory = f'ice_flags_{lake.group_id}'
-    unzip_archive_ice_flags = checkpoints.unzip_archive.get(
-        file_category=file_category,
-        directory_name=ice_flags_directory
-    ).output[0]
+    unzip_archive_ice_flags = trigger_unzip_archive(file_category, ice_flags_directory)
 
     # dynamic filenames
     drivers_file = f'{unzip_archive_drivers}/{lake.meteo_filename}'
@@ -143,30 +152,35 @@ rule augment_mntoha_lake_metadata:
         "2_process/src/make_lake_metadata_augmented.py"
 
 
-def mntoha_obs_file(wildcards):
+def get_obs_file(file_category, archive_name, obs_file_name):
     '''
-    Return MNTOHA temperature observations filepath.
+    Return temperature observations filepath.
 
     Depend on unzip_archive checkpoint to ensure that
-    temperature_observations.csv gets unzipped.
+    the observation file gets unzipped.
 
-    :param wildcards: Snakemake wildcards (empty).
-    :returns: Path of MNTOHA temperature observations csv
+    :param file_category: Category of files, e.g., obs_mntoha. Used by
+        unzip_archive to determine parent directory.
+    :param archive_name: Name of zip archive containing observation file, and
+        name of directory to unzip to
+    :param obs_file_name: name of unzipped observation file
+    :returns: Path of temperature observations csv
 
     '''
-    # Trigger checkpoint to unzip temperature_observations.csv
-    obs_file_directory = checkpoints.unzip_archive.get(
-        file_category='obs_mntoha',
-        directory_name='temperature_observations'
-    ).output[0]
-    return os.path.join(obs_file_directory, "temperature_observations.csv")
+    # Trigger checkpoint to unzip observation file
+    obs_file_directory = trigger_unzip_archive(file_category, archive_name)
+    return os.path.join(obs_file_directory, obs_file_name)
 
 
 # Add column of observation depths interpolated to nearest modeling mesh node
 rule interpolate_mntoha_obs_depths:
     input:
         # "1_fetch/out/obs_mntoha/temperature_observations/temperature_observations.csv"
-        mntoha_obs_file
+        lambda wildcards: get_obs_file(
+            file_category='obs_mntoha',
+            archive_name='temperature_observations',
+            obs_file_name='temperature_observations.csv'
+        )
     output:
         "2_process/tmp/mntoha/temperature_observations_interpolated.csv"
     params:

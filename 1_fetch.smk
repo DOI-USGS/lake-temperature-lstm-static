@@ -47,9 +47,9 @@ rule fetch_mntoha_dynamic:
 # which directory they'll be in after they are unzipped.
 checkpoint unzip_archive:
     input:
-        "1_fetch/tmp/{file_category}/{directory_name}.zip"
+        "1_fetch/tmp/{file_category}/{archive_name}.zip"
     output:
-        files = directory("1_fetch/out/{file_category}/{directory_name}")
+        files = directory("1_fetch/out/{file_category}/{archive_name}")
     params:
         source_dir = "1_fetch/tmp",
         destination_dir = "1_fetch/out"
