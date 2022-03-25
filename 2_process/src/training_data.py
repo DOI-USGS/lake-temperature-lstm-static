@@ -30,6 +30,12 @@ def read_sequences(lake_sequence_files, n_depths):
     :returns: numpy array of sequences
 
     """
+    sequences = np.concatenate([np.load(sfn) for sfn in lake_sequence_files])
+    # remove inputs with nans
+    # shape of sequences is (# sequences, sequence_length, # depths + # features)
+    # slice from n_depths forward to index features
+    nan_inputs = np.any(np.isnan(sequences[:, :, n_depths:]), axis=(1,2))
+    return sequences[np.invert(nan_inputs), :, :]
 
 
 def scaling_params(data, **kwargs):
