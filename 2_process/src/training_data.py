@@ -16,6 +16,39 @@ def split_indices(num_items, split_fractions, seed=0):
     :returns: A list of arrays of indices, one for each subset.
 
     """
+    # Convert split_fractions to 1D numpy array
+    split_fractions = np.array(split_fractions).flatten()
+    num_splits = len(split_fractions)
+
+    # Make sure the fractions sum to 1
+    fraction_sum = split_fractions.sum()
+    # Allow for floating point precision error by using np.isclose
+    if not np.isclose(fraction_sum, 1.0):
+        raise ValueError("split_fractions must sum to 1")
+
+    # Create an array of indices from 0 to num_items - 1
+    item_indices = np.arange(num_items)
+    # Shuffle its order
+    rng = np.random.default_rng(seed)
+    rng.shuffle(item_indices)
+
+    # Determine where to split the array item_indices so that each split has
+    # the correct fraction of the total items.
+    # Running sum of split fractions
+    cumulative_fractions = split_fractions.cumsum()
+    # Multiply the running sum by the total number of items and round to an
+    # integer to get the ending index of each split
+    where_to_split = (num_items*cumulative_fractions).round().astype(int)
+    # Insert 0 at the beginning so that we can use the array for slicing
+    where_to_split = np.insert(where_to_split, 0, 0)
+    # The first split will be where_to_split[0]:where_to_split[1]
+    # The second split will be where_to_split[1]:where_to_split[2]
+    # And so on.
+
+    # Split item_indices, using where_to_split to slice
+    split_indices = [item_indices[where_to_split[i_split]:where_to_split[i_split+1]] 
+                     for i_split in range(num_splits)]
+    return split_indices
 
 
 def read_sequences(lake_sequence_files, n_depths):
