@@ -101,7 +101,7 @@ def get_train_test_data(sequences_summary_file,
 
     1. Split lakes into train and test sets
     2. Read lake-specific sequences from .npy files and concatenate
-    3. Normalize using training data
+    3. Standardize using training data
 
     """
 
@@ -123,7 +123,7 @@ def get_train_test_data(sequences_summary_file,
     unscaled_train_data = read_sequences(lake_sequences_files_train, n_depths)
     unscaled_test_data = read_sequences(lake_sequences_files_test, n_depths)
 
-    # 3. Normalize using training data
+    # 3. Standardize using training data
 
     feature_means, feature_stds = get_mean_std(
         unscaled_train_data,
