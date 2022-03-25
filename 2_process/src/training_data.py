@@ -139,7 +139,7 @@ def get_train_test_data(sequences_summary_file,
 
 if __name__ == '__main__':
     train_data, test_data, feature_means, feature_stds = get_train_test_data(
-        snakemake.params['sequences_summary_file'],
+        snakemake.input['sequences_summary_file'],
         snakemake.params['train_frac'],
         snakemake.params['test_frac'],
         snakemake.params['n_depths'],
@@ -148,8 +148,8 @@ if __name__ == '__main__':
         snakemake.params['seed']
     )
     # save data to npz along with metadata
-    npz_file_train = snakemake.output[0]
-    npz_file_test = snakemake.output[1]
+    npz_file_train = snakemake.output['train_file']
+    npz_file_test = snakemake.output['test_file']
     # **snakemake.params saves all snakemake params to npz, using their names
     # as keywords
     np.savez(npz_file_train,
