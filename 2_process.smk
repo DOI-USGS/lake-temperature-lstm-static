@@ -187,3 +187,24 @@ rule process_sequences:
         "2_process/out/{data_source}_sequences/{data_source}_sequences_summary.csv"
     run:
         save_sequences_summary(input, output[0])
+
+
+rule create_training_data:
+    input:
+        "2_process/out/{data_source}_sequences/{data_source}_sequences_summary.csv"
+    output:
+        "2_process/out/{data_source}/train.npz",
+        "2_process/out/{data_source}/test.npz"
+    params:
+        sequences_summary_file = lambda wildcards, input: input[0],
+        train_file = lambda wildcards, output: output[0],
+        test_file = lambda widlcards, output: output[1],
+        train_frac = config['train_frac'],
+        test_frac = config['test_frac'],
+        n_depths = len(config['depths_all']),
+        n_dynamic = len(config['dynamic_features_all']),
+        n_static = len(config['static_features_all']),
+        seed = config['seed']
+    script:
+        "2_process/src/training_data.py"
+
