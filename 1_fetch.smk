@@ -49,7 +49,20 @@ checkpoint unzip_archive:
     input:
         "1_fetch/tmp/{file_category}/{archive_name}.zip"
     output:
-        files = directory("1_fetch/out/{file_category}/{archive_name}")
+        # The output is the name of the directory that files are extracted to.
+        # Regular expressions ensure that files in subdirectories of
+        # 1_fetch/out/{file_category} don't get matched, and csvs in
+        # 1_fetch/out/ don't get matched.
+        # 
+        # Regular expression syntax explanation:
+        # snakemake allows regular expressions to match wildcards by placing
+        # them after a comma, like this: {wildcard,regex}
+        # [^/] means any character that is not / (so, not a subdirectory), and
+        # + means one or more of the previous
+        # So, [^/]+ means match any string that doesn't have a / in it.
+        # $ means to the end of the string, and (?<!string) is a negative lookbehind
+        # So, $(?<!\.csv) means don't match if the final characters in the string are .csv
+        files = directory("1_fetch/out/{file_category,[^/]+}/{archive_name,[^/]+$(?<!\.csv)}")
     params:
         source_dir = "1_fetch/tmp",
         destination_dir = "1_fetch/out"
