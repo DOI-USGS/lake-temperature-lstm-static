@@ -274,6 +274,7 @@ class Model(nn.Module):
                  input_size_dyn: int,
                  input_size_stat: int,
                  hidden_size: int,
+                 output_size: int,
                  initial_forget_bias: int = 5,
                  dropout: float = 0.0,
                  concat_static: bool = False,
@@ -288,6 +289,8 @@ class Model(nn.Module):
             Number of static input features (used in the EA-LSTM input gate).
         hidden_size: int
             Number of LSTM cells/hidden units.
+        output_size: int
+            Number of LSTM output units.
         initial_forget_bias: int
             Value of the initial forget gate bias. (default: 5)
         dropout: float
@@ -317,7 +320,7 @@ class Model(nn.Module):
                                initial_forget_bias=initial_forget_bias)
 
         self.dropout = nn.Dropout(p=dropout)
-        self.fc = nn.Linear(hidden_size, 1)
+        self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x_d: torch.Tensor, x_s: torch.Tensor = None) \
             -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -343,6 +346,6 @@ class Model(nn.Module):
             h_n, c_n = self.lstm(x_d)
         else:
             h_n, c_n = self.lstm(x_d, x_s)
-        last_h = self.dropout(h_n[:, -1, :])
-        out = self.fc(last_h)
+        h_n = self.dropout(h_n)
+        out = self.fc(h_n)
         return out, h_n, c_n
