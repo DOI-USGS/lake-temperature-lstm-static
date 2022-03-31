@@ -71,22 +71,6 @@ def read_sequences(lake_sequence_files, n_depths):
     return sequences[np.invert(nan_inputs), :, :]
 
 
-def get_mean_std(data, **kwargs):
-    """
-    Get means and standard deviations of an array of data. Ignore NaN
-    values. Replace any standard deviations of 0 with 1.
-
-    :param data: Array-like set of data
-    :param **kwargs: Keyword arguments used by np.nanmean and np.nanstd
-
-    """
-    means = np.nanmean(data, **kwargs)
-    stds = np.nanstd(data, **kwargs)
-    # Correct for any 0 standard deviations.
-    stds = np.where(stds <= 0, 1, stds)
-    return (means, stds)
-
-
 def get_train_test_data(sequences_summary_file,
                         train_frac,
                         test_frac,
@@ -125,10 +109,10 @@ def get_train_test_data(sequences_summary_file,
 
     # 3. Standardize using training data
 
-    feature_means, feature_stds = get_mean_std(
-        unscaled_train_data,
-        axis=(0,1)
-    )
+    feature_means = np.nanmean(unscaled_train_data, axis=(0,1))
+    feature_stds = np.nanstd(unscaled_train_data, axis=(0,1))
+    # Correct for any 0 standard deviations.
+    feature_stds = np.where(feature_stds <= 0, 1, feature_stds)
 
     # Last dimension of data is features
     train_data = (unscaled_train_data - feature_means)/feature_stds
