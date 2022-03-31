@@ -53,9 +53,9 @@ def split_indices(num_items, split_fractions, seed=0):
 
 def read_sequences(lake_sequence_files, n_depths):
     """
-    Read a list of sequence files in, remove sequences that have any
-    NaN values among their inputs, and return a single numpy array
-    containing all sequences from all sequence files.
+    Read a list of sequence files in, remove sequences that have any NaN values
+    among their input features, and return a single numpy array containing all
+    sequences from all sequence files.
 
     :param lake_sequence_files: List of lake sequence .npy files
     :param n_depths: Number of discrete depths at which LSTM will
@@ -64,9 +64,9 @@ def read_sequences(lake_sequence_files, n_depths):
 
     """
     sequences = np.concatenate([np.load(sfn) for sfn in lake_sequence_files])
-    # remove inputs with nans
-    # shape of sequences is (# sequences, sequence_length, # depths + # features)
-    # slice from n_depths forward to index features
+    # remove input features with nans
+    # shape of sequences is (# sequences, sequence_length, # depths + # input features)
+    # slice from n_depths forward to index input features only
     nan_inputs = np.any(np.isnan(sequences[:, :, n_depths:]), axis=(1,2))
     return sequences[np.invert(nan_inputs), :, :]
 
