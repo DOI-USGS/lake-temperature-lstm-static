@@ -19,7 +19,7 @@ def trigger_unzip_archive(file_category, archive_name):
     unzipped_archive = checkpoints.unzip_archive.get(
         file_category=file_category,
         archive_name=archive_name
-    ).output[0]
+    ).output.folder
     return(unzipped_archive)
 
 
