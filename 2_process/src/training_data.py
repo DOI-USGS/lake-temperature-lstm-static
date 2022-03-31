@@ -109,20 +109,20 @@ def get_train_test_data(sequences_summary_file,
 
     # 3. Standardize using training data
 
-    feature_means = np.nanmean(unscaled_train_data, axis=(0,1))
-    feature_stds = np.nanstd(unscaled_train_data, axis=(0,1))
+    train_data_means = np.nanmean(unscaled_train_data, axis=(0,1))
+    train_data_stds = np.nanstd(unscaled_train_data, axis=(0,1))
     # Correct for any 0 standard deviations.
-    feature_stds = np.where(feature_stds <= 0, 1, feature_stds)
+    train_data_stds = np.where(train_data_stds <= 0, 1, train_data_stds)
 
     # Last dimension of data is features
-    train_data = (unscaled_train_data - feature_means)/feature_stds
-    test_data = (unscaled_test_data - feature_means)/feature_stds
+    train_data = (unscaled_train_data - train_data_means)/train_data_stds
+    test_data = (unscaled_test_data - train_data_means)/train_data_stds
 
-    return (train_data, test_data, feature_means, feature_stds)
+    return (train_data, test_data, train_data_means, train_data_stds)
 
 
 if __name__ == '__main__':
-    train_data, test_data, feature_means, feature_stds = get_train_test_data(
+    train_data, test_data, train_data_means, train_data_stds = get_train_test_data(
         snakemake.input['sequences_summary_file'],
         snakemake.params['train_frac'],
         snakemake.params['test_frac'],
@@ -138,12 +138,12 @@ if __name__ == '__main__':
     # as keywords
     np.savez(npz_file_train,
              data=train_data,
-             feature_means=feature_means,
-             feature_stds=feature_stds,
+             train_data_means=train_data_means,
+             train_data_stds=train_data_stds,
              **snakemake.params)
     np.savez(npz_file_test,
              data=test_data,
-             feature_means=feature_means,
-             feature_stds=feature_stds,
+             train_data_means=train_data_means,
+             train_data_stds=train_data_stds,
              **snakemake.params)
 
