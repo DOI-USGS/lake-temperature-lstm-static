@@ -165,7 +165,7 @@ def main(sequences_summary_file,
          train_file,
          test_file,
          train_test_summary_file,
-         params):
+         process_config):
     """
     Read lake-specific sequences from .npy files, save .npz files for training
     and test data, and save a file listing which lakes went into the training
@@ -177,31 +177,26 @@ def main(sequences_summary_file,
     :param test_file: test data npz filename with extension
     :param train_test_summary_file: Filename of csv listing whether lakes were
         put into train or test set
-    :param params: Parameters used to form training and test sets.
-        - train_frac
-        - test_frac
-        - seed
-        - n_depths
-        - n_dynamic
-        - n_static
+    :param process_config: Configuration settings used to form training and test sets.
+        Found in 2_process/process_config.yaml
 
     """
 
     # Split lake sequence files into train and test sets
     train_lake_sequences_files, test_lake_sequences_files = get_train_test_sequences_files(
         sequences_summary_file,
-        params['train_frac'],
-        params['test_frac'],
-        params['seed']
+        process_config['train_frac'],
+        process_config['test_frac'],
+        process_config['seed']
     )
 
     # Get training and test data
     train_data, test_data, train_data_means, train_data_stds = get_train_test_data(
         train_lake_sequences_files,
         test_lake_sequences_files,
-        params['n_depths'],
-        params['n_dynamic'],
-        params['n_static']
+        len(process_config['depths_all']),
+        len(process_config['dynamic_features_all']),
+        len(process_config['static_features_all'])
     )
 
     # Create new directories as needed
@@ -211,18 +206,18 @@ def main(sequences_summary_file,
             os.makedirs(directory)
 
     # Save data to npz along with metadata
-    # **params saves all params to npz, using their names
-    # as keywords
+    # **process_config saves all configuration settings to npz, with their names as
+    # keywords
     np.savez(train_file,
              data=train_data,
              train_data_means=train_data_means,
              train_data_stds=train_data_stds,
-             **params)
+             **process_config)
     np.savez(test_file,
              data=test_data,
              train_data_means=train_data_means,
              train_data_stds=train_data_stds,
-             **params)
+             **process_config)
 
     # Save which lakes are in the training set and which are in the test set
     train_lakes_df = pd.DataFrame({'lake_sequences_file':train_lake_sequences_files,
@@ -238,5 +233,5 @@ if __name__ == '__main__':
          snakemake.output['train_file'],
          snakemake.output['test_file'],
          snakemake.output['train_test_summary_file'],
-         snakemake.params)
+         snakemake.params['process_config'])
 

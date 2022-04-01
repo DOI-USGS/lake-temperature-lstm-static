@@ -202,12 +202,7 @@ rule create_training_data:
         test_file = "2_process/out/{data_source}/test.npz",
         train_test_summary_file = "2_process/out/{data_source}/train_test_summary.csv"
     params:
-        train_frac = config['train_frac'],
-        test_frac = config['test_frac'],
-        n_depths = len(config['depths_all']),
-        n_dynamic = len(config['dynamic_features_all']),
-        n_static = len(config['static_features_all']),
-        seed = config['seed']
+        process_config = config
     script:
         "2_process/src/training_data.py"
 
