@@ -192,6 +192,10 @@ rule process_sequences:
 # Create training and test data
 rule create_training_data:
     input:
+        lambda wildcards: get_lake_sequence_files(
+            '2_process/out/{}_sequences/sequences_{}.npy',
+            wildcards.data_source
+        ),
         sequences_summary_file = "2_process/out/{data_source}_sequences/{data_source}_sequences_summary.csv"
     output:
         train_file = "2_process/out/{data_source}/train.npz",
