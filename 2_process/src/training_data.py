@@ -1,5 +1,6 @@
 # Read lake-specific sequences from .npy files and save .npz files for training and test data
 
+import os
 import numpy as np
 import pandas as pd
 
@@ -162,6 +163,12 @@ if __name__ == '__main__':
     npz_file_train = snakemake.output['train_file']
     npz_file_test = snakemake.output['test_file']
     train_test_summary_file = snakemake.output['train_test_summary_file']
+
+    # Create new directories as needed
+    for filepath in [npz_file_train, npz_file_test, train_test_summary_file]:
+        directory = os.path.dirname(npz_file_train)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
     # Save data to npz along with metadata
     # **snakemake.params saves all snakemake params to npz, using their names
