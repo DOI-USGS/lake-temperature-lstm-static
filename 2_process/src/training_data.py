@@ -11,9 +11,10 @@ def split_indices(num_items, split_fractions, seed=0):
     Useful for determining a Train/Test or Train/Validate/Test split
 
     :param num_items: Number of items to split into subsets.
-    :param split_fractions: An array-like object containing a fraction for each subset. The elements of split_fractions must sum to 1.
-        E.g., for a 60-20-20 split, split_fractions=[.6, .2, .2]
-    :param seed: Random seed used to shuffle indices
+    :param split_fractions: An array-like object containing a fraction for each
+        subset. The elements of split_fractions must sum to 1. E.g., for a
+        60-20-20 split, split_fractions=[.6, .2, .2]
+    :param seed: Random seed used to shuffle indices (Default value = 0)
     :returns: A list of arrays of indices, one for each subset.
 
     """
@@ -59,8 +60,8 @@ def read_sequences(lake_sequence_files, n_depths):
     sequences from all sequence files.
 
     :param lake_sequence_files: List of lake sequence .npy files
-    :param n_depths: Number of discrete depths at which LSTM will
-    output temperatures
+    :param n_depths: Number of discrete depths at which LSTM will output
+        temperatures
     :returns: numpy array of sequences
 
     """
@@ -78,7 +79,7 @@ def get_train_test_sequences_files(sequences_summary_file,
                                    seed):
     """
     Split lakes into train and test data.
-
+    
     This function takes lake-specific sequence files and randomly splits them
     into training and testing sets.
 
@@ -111,11 +112,27 @@ def get_train_test_data(train_lake_sequences_files,
                         n_static):
     """
     Create train and test data
-
-    This function takes data from lake-specific sequences in .npy files and creates arrays for training and testing.
-
+    
+    This function takes data from lake-specific sequences in .npy files and
+    creates arrays for training and testing.
     1. Read lake-specific sequences from .npy files and concatenate
     2. Standardize using training data
+
+    :param train_lake_sequences_files: List of lake sequence files in the
+        training set
+    :param test_lake_sequences_files: List of lake sequence files in the test
+        set
+    :param n_depths: Number of discrete depths at which LSTM will output
+        temperatures
+    :param n_dynamic: Number of dynamic input features
+    :param n_static: Number of static input features
+    :returns: Tuple of four elements
+        1. 3D numpy array of training data
+        2. Numpy array of test data
+        3. Numpy array of means of training data (input features and
+           temperatures)
+        4. Numpy array of standard deviations of training data (input features
+           and temperatures)
 
     """
 
@@ -137,7 +154,11 @@ def get_train_test_data(train_lake_sequences_files,
     train_data = (unscaled_train_data - train_data_means)/train_data_stds
     test_data = (unscaled_test_data - train_data_means)/train_data_stds
 
-    return (train_data, test_data, train_data_means, train_data_stds)
+    return (train_data,
+            test_data,
+            train_data_means,
+            train_data_stds
+           )
 
 
 if __name__ == '__main__':
