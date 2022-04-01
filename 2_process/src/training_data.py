@@ -161,49 +161,68 @@ def get_train_test_data(train_lake_sequences_files,
            )
 
 
-if __name__ == '__main__':
+def main(sequences_summary_file,
+         train_file,
+         test_file,
+         train_test_summary_file,
+         params):
+    """
+    Read lake-specific sequences from .npy files, save .npz files for training
+    and test data, and save a file listing which lakes went into the training
+    set and which lakes went into the test set.
+
+    :param sequences_summary_file: Summary csv with columns sequences_file and
+        num_sequences.
+    :param train_file: training data npz filename with extension
+    :param test_file: test data npz filename with extension
+    :param train_test_summary_file: Filename of csv listing whether lakes were
+        put into train or test set
+    :param params: Parameters used to form training and test sets.
+        - train_frac
+        - test_frac
+        - seed
+        - n_depths
+        - n_dynamic
+        - n_static
+
+    """
 
     # Split lake sequence files into train and test sets
     train_lake_sequences_files, test_lake_sequences_files = get_train_test_sequences_files(
-        snakemake.input['sequences_summary_file'],
-        snakemake.params['train_frac'],
-        snakemake.params['test_frac'],
-        snakemake.params['seed']
+        sequences_summary_file,
+        params['train_frac'],
+        params['test_frac'],
+        params['seed']
     )
 
     # Get training and test data
     train_data, test_data, train_data_means, train_data_stds = get_train_test_data(
         train_lake_sequences_files,
         test_lake_sequences_files,
-        snakemake.params['n_depths'],
-        snakemake.params['n_dynamic'],
-        snakemake.params['n_static']
+        params['n_depths'],
+        params['n_dynamic'],
+        params['n_static']
     )
 
-    # Output files to save
-    npz_file_train = snakemake.output['train_file']
-    npz_file_test = snakemake.output['test_file']
-    train_test_summary_file = snakemake.output['train_test_summary_file']
-
     # Create new directories as needed
-    for filepath in [npz_file_train, npz_file_test, train_test_summary_file]:
-        directory = os.path.dirname(npz_file_train)
+    for filepath in [train_file, test_file, train_test_summary_file]:
+        directory = os.path.dirname(filepath)
         if not os.path.exists(directory):
             os.makedirs(directory)
 
     # Save data to npz along with metadata
-    # **snakemake.params saves all snakemake params to npz, using their names
+    # **params saves all params to npz, using their names
     # as keywords
-    np.savez(npz_file_train,
+    np.savez(train_file,
              data=train_data,
              train_data_means=train_data_means,
              train_data_stds=train_data_stds,
-             **snakemake.params)
-    np.savez(npz_file_test,
+             **params)
+    np.savez(test_file,
              data=test_data,
              train_data_means=train_data_means,
              train_data_stds=train_data_stds,
-             **snakemake.params)
+             **params)
 
     # Save which lakes are in the training set and which are in the test set
     train_lakes_df = pd.DataFrame({'lake_sequences_file':train_lake_sequences_files,
@@ -212,4 +231,12 @@ if __name__ == '__main__':
                                    'set':'test'})
     log_df = pd.concat([train_lakes_df, test_lakes_df])
     log_df.to_csv(train_test_summary_file, index=False, header=False)
+
+
+if __name__ == '__main__':
+    main(snakemake.input['sequences_summary_file'],
+         snakemake.output['train_file'],
+         snakemake.output['test_file'],
+         snakemake.output['train_test_summary_file'],
+         snakemake.params)
 
