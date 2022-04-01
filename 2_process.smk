@@ -195,7 +195,8 @@ rule create_training_data:
         sequences_summary_file = "2_process/out/{data_source}_sequences/{data_source}_sequences_summary.csv"
     output:
         train_file = "2_process/out/{data_source}/train.npz",
-        test_file = "2_process/out/{data_source}/test.npz"
+        test_file = "2_process/out/{data_source}/test.npz",
+        train_test_summary_file = "2_process/out/{data_source}/train_test_summary.csv"
     params:
         train_frac = config['train_frac'],
         test_frac = config['test_frac'],
