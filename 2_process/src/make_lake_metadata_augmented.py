@@ -31,9 +31,10 @@ def elevation_query(lat, lon):
     return elevation
 
 
-def make_lake_metadata_augmented(in_file, out_file):
+def add_elevation_from_EPQS(in_file, out_file):
     """
-    Add "elevation" column to metadata file and save to new file
+    Add "elevation" column to metadata file and save to new file.
+    Use the USGS Elevation Point Query Service.
 
     :param in_file: filename to read lake metadata from
     :param out_file: filename to save to
