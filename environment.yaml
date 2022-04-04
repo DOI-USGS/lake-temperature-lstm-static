@@ -12,5 +12,7 @@ dependencies:
   - pandas 
   - numpy
   - matplotlib
+  - jupyterlab
+  - ipykernel
   - pip:
     - sciencebasepy
