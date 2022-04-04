@@ -63,9 +63,10 @@ rule interpolate_mntoha_obs_depths:
 # Add elevation to MNTOHA lake metadata
 rule augment_mntoha_lake_metadata:
     input:
-        "1_fetch/out/lake_metadata.csv"
+        mntoha_metadata="1_fetch/out/lake_metadata.csv",
+        surface_metadata="1_fetch/out/surface/lake_metadata.csv"
     output:
-        "2_process/tmp/mntoha/lake_metadata_augmented.csv"
+        augmented_metadata="2_process/tmp/mntoha/lake_metadata_augmented.csv"
     script:
         "2_process/src/make_lake_metadata_augmented.py"
 
