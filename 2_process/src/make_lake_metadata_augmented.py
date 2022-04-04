@@ -90,4 +90,6 @@ def add_elevation_from_file(in_file, elevation_file, out_file):
 
 
 if __name__ == '__main__':
-    make_lake_metadata_augmented(snakemake.input[0], snakemake.output[0])
+    add_elevation_from_file(snakemake.input.mntoha_metadata,
+                            snakemake.input.surface_metadata,
+                            snakemake.output.augmented_metadata)
