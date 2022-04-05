@@ -36,3 +36,11 @@ If the download is interrupted, resume it and overwrite partially downloaded fil
 `snakemake -c1 -p --rerun-incomplete fetch_all`
 
 To trigger a fresh download, change the date in 1_fetch/in/pull_date.txt to today's date and then call snakemake as above.
+
+## Licenses
+
+This work makes use of code available at
+https://github.com/kratzert/ealstm_regional_modeling. That code permits such
+use under the Apache-2.0 License. See
+<https://opensource.org/licenses/Apache-2.0>
+
