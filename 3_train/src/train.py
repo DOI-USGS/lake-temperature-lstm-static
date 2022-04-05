@@ -67,3 +67,50 @@ class SequenceDataset(Dataset):
         return dynamic_features, static_features, temperatures
 
 
+def get_dataloader(npz_filepath,
+                   dynamic_features_use,
+                   static_features_use,
+                   depths_use):
+    """
+    Get dataloader from npz file
+
+    :param npz_filepath: Name and path to .npz data file
+    :param dynamic_features_use: List of dynamic features to include
+    :param static_features_use: List of static features to include
+    :param depths_use: List of depth values to include
+
+    """
+
+    # Training data
+    data_npz = np.load(npz_filepath)
+
+    # Determine which features to use
+
+    # depths to strings
+    depths_all_str = [f"depth_{depth}" for depth in data_npz['depths_all']]
+    depths_use_str = [f"depth_{depth}" for depth in depths_use]
+
+    # The first `len(depths)` elements in the third dimension are temperature observations.
+    # Input features are drivers, clarity, ice flags, and static attributes, in that order.
+    features_all = (depths_all_str 
+                    + data_npz['dynamic_features_all'].tolist()
+                    + data_npz['static_features_all'].tolist())
+
+    depths_use_idx = [features_all.index(feature) for feature in depths_use_str]
+    dynamic_features_use_idx = [features_all.index(feature) for feature in dynamic_features_use]
+    static_features_use_idx = [features_all.index(feature) for feature in static_features_use]
+    idx_to_use = depths_use_idx + dynamic_features_use_idx + static_features_use_idx
+
+    n_dynamic = len(dynamic_features_use)
+    n_static = len(static_features_use)
+    n_depths = len(depths_use)
+
+    # shape of data is (# sequences, sequence_length, # depths + # input features)
+    dataset = SequenceDataset(
+        torch.from_numpy(data_npz['data'][:,:,idx_to_use]),
+        n_depths,
+        n_dynamic,
+        n_static
+    )                            
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    return dataloader
