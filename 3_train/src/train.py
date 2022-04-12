@@ -162,3 +162,50 @@ def get_data(npz_filepath,
     train_subset, valid_subset = split(dataset, 1-valid_frac, seed)
     return get_data_loaders(train_subset, valid_subset, batch_size)
 
+
+def get_model(
+    n_depths,
+    n_dynamic,
+    n_static,
+    hidden_size,
+    initial_forget_bias,
+    dropout,
+    concat_static,
+    learning_rate
+):
+    """
+    Return LSTM model and optimizer
+
+    Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#refactor-using-optim
+
+    :param n_depths: Number of depths at which to predict temperatures (number
+        of outputs at each time step)
+    :param n_dynamic: Number of dynamic input features
+    :param n_static: Number of static input features
+    :param hidden_size: Number of elements in hidden state and cell state
+    :param initial_forget_bias: Value of the initial forget gate bias
+    :param dropout: Dropout probability, from 0 to 1
+    :param concat_static: If True, uses standard LSTM. Otherwise, uses EA-LSTM
+    :param learning_rate: Learning rate for optimizer
+    :returns: Tuple of model and optimizer
+
+    """
+    if torch.cuda.is_available():
+        device = "cuda" 
+    else:
+        device = "cpu"
+    print(f"Using {device} device")
+
+    model = Model(
+        input_size_dyn=n_dynamic,
+        input_size_stat=n_static,
+        hidden_size=hidden_size,
+        output_size=n_depths,
+        initial_forget_bias=initial_forget_bias,
+        dropout=dropout,
+        concat_static=concat_static
+    ).to(device)
+
+    optimizer = Adam(model.parameters(), lr=learning_rate)
+    return model, optimizer
+
