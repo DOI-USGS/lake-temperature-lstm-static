@@ -86,6 +86,26 @@ def split(dataset, fraction, seed):
     return subset_1, subset_2
 
 
+def get_data_loaders(train_ds, valid_ds, batch_size):
+    """
+    Get data loaders for both the train dataset and the validate dataset
+
+    Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#create-fit-and-get-data
+
+    :param train_ds: Dataset for training data
+    :param valid_ds: Dataset for validation data
+    :param batch_size: Number of elements in each training batch
+    :returns: Tuple of training data loader and validation data loader
+
+    """
+    return (
+        DataLoader(train_ds, batch_size=batch_size, shuffle=True),
+        # The validate set is not used for training with backprop, so we can
+        # afford its batch size to be larger and it doesn't need to be shuffled
+        DataLoader(valid_ds, batch_size=batch_size * 2),
+    )
+
+
 def get_dataloader(npz_filepath,
                    dynamic_features_use,
                    static_features_use,
