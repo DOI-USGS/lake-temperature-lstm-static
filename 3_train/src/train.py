@@ -209,3 +209,40 @@ def get_model(
     optimizer = Adam(model.parameters(), lr=learning_rate)
     return model, optimizer
 
+
+def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
+    """
+    Evaluate loss for one batch of inputs and outputs, and optionally update model
+    parameters by backpropagation
+
+    Non-finite (e.g. NaN) values in y are ignored.
+
+    Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#create-fit-and-get-data
+
+    :param model: PyTorch model inheriting nn.Module()
+    :param loss_func: PyTorch loss function, e.g., nn.MSELoss()
+    :param x_d: Dynamic input features
+    :param x_s: Static input features
+    :param y: Outputs (temperatures at multiple depths)
+    :param opt: Optimizer to use to update model parameters. If opt=None, do
+        not update model parameters (Default value = None)
+    :returns: Tuple of loss value and number of finite (non-NaN) output labels
+        in batch
+
+    """
+
+    # model only needs one set of static inputs
+    # They are identical at all time steps
+    pred, h, c = model(x_d, x_s[:, 0, :])
+    # Only compute loss where y is finite
+    loss_idx = torch.isfinite(y)
+    loss = loss_func(pred[loss_idx], y[loss_idx])
+
+    if opt is not None:
+        loss.backward()
+        opt.step()
+        opt.zero_grad()
+
+    # return loss.item(), len(y)
+    return loss.item(), torch.sum(loss_idx)
+
