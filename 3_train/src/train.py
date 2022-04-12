@@ -106,50 +106,59 @@ def get_data_loaders(train_ds, valid_ds, batch_size):
     )
 
 
-def get_dataloader(npz_filepath,
-                   dynamic_features_use,
-                   static_features_use,
-                   depths_use):
+def get_data(npz_filepath,
+             dynamic_features_use,
+             static_features_use,
+             depths_use,
+             batch_size,
+             valid_frac,
+             seed):
     """
-    Get dataloader from npz file
+    Get train and validate dataloaders from npz file
+
+    Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#create-fit-and-get-data
 
     :param npz_filepath: Name and path to .npz data file
     :param dynamic_features_use: List of dynamic features to include
     :param static_features_use: List of static features to include
     :param depths_use: List of depth values to include
+    :param batch_size: Number of elements in each training batch
+    :param valid_frac: The fraction of data samples to put into the validation set
+    :param seed: Seed for random number generator
 
     """
+
+    # Check that valid_frac is a fraction
+    if (valid_frac < 0) or (valid_frac > 1):
+        raise ValueError("valid_frac must be between 0 and 1")
 
     # Training data
     data_npz = np.load(npz_filepath)
 
-    # Determine which features to use
-
-    # depths to strings
-    depths_all_str = [f"depth_{depth}" for depth in data_npz['depths_all']]
-    depths_use_str = [f"depth_{depth}" for depth in depths_use]
-
-    # The first `len(depths)` elements in the third dimension are temperature observations.
+    # Determine which depths and features to use
     # Input features are drivers, clarity, ice flags, and static attributes, in that order.
-    features_all = (depths_all_str 
-                    + data_npz['dynamic_features_all'].tolist()
-                    + data_npz['static_features_all'].tolist())
+    # Combine full set into one list
+    elements_all = (data_npz['depths_all'].tolist() +
+                    data_npz['dynamic_features_all'].tolist() +
+                    data_npz['static_features_all'].tolist())
+    # Combine set to use into one list
+    elements_use = (depths_use + dynamic_features_use + static_features_use)
+    # Select set to use out of full set
+    idx_to_use = [elements_all.index(e) for e in elements_use]
+    # Shape of data is (# sequences, sequence_length, # depths + # input features)
+    data_array_to_use = data_npz['data'][:,:,idx_to_use]
 
-    depths_use_idx = [features_all.index(feature) for feature in depths_use_str]
-    dynamic_features_use_idx = [features_all.index(feature) for feature in dynamic_features_use]
-    static_features_use_idx = [features_all.index(feature) for feature in static_features_use]
-    idx_to_use = depths_use_idx + dynamic_features_use_idx + static_features_use_idx
-
+    n_depths = len(depths_use)
     n_dynamic = len(dynamic_features_use)
     n_static = len(static_features_use)
-    n_depths = len(depths_use)
 
-    # shape of data is (# sequences, sequence_length, # depths + # input features)
+    # Train/validate split
     dataset = SequenceDataset(
-        torch.from_numpy(data_npz['data'][:,:,idx_to_use]),
+        data_array_to_use,
         n_depths,
         n_dynamic,
         n_static
-    )                            
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
-    return dataloader
+    )
+    train_subset, valid_subset = split(dataset, 1-valid_frac, seed)
+    return get_data_loaders(train_subset, valid_subset, batch_size)
+
