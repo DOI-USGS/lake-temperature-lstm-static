@@ -73,7 +73,7 @@ def split(dataset, fraction, seed):
 
     :param dataset: A torch.utils.data.Dataset to be split
     :param fraction: The fraction of data samples to put in the first subset
-    :param seed: Seed for random number generator
+    :param seed: Integer seed for random number generator
     :returns: Tuple of two datasets for the two subsets
 
     """
@@ -124,7 +124,7 @@ def get_data(npz_filepath,
     :param depths_use: List of depth values to include
     :param batch_size: Number of elements in each training batch
     :param valid_frac: The fraction of data samples to put into the validation set
-    :param seed: Seed for random number generator
+    :param seed: Integer seed for random number generator
 
     """
 
@@ -184,7 +184,7 @@ def get_model(
     :param n_static: Number of static input features
     :param hidden_size: Number of elements in hidden state and cell state
     :param initial_forget_bias: Value of the initial forget gate bias
-    :param dropout: Dropout probability, from 0 to 1
+    :param dropout: Dropout probability, from 0 to 1 (0 = don't use dropout)
     :param concat_static: If True, uses standard LSTM. Otherwise, uses EA-LSTM
     :param learning_rate: Learning rate for optimizer
     :returns: Tuple of model and optimizer
@@ -316,4 +316,68 @@ def save_no_overwrite(model, filepath):
         suffix += 1
         filepath = f'{root}_{suffix}{extension}'
     torch.save(model.state_dict(), filepath)
+
+
+def main(npz_filepath, weights_file, config):
+    """
+    Train a model and save the trained weights
+
+    Load training and validation data from a .npz file. Use the settings
+    specified in the config dictionary. Train the model, and save its weights.
+
+    :param npz_filepath: Name and path to .npz data file
+    :param weights_file: Path and filename to save weights to
+    :param config: Dictionary of configuration settings, including:
+        max_epochs            integer, Maximum number of epochs to train for
+        loss_criterion        string, Name of class in torch.nn to use for loss
+        learning_rate         float, Learning rate of optimizer
+        concat_static         boolean, Add static to dynamic and use standard LSTM, or not
+        dropout               float, Dropout probability, from 0 to 1 (0 = don't use dropout)
+        initial_forget_bias   float, Value of the initial forget gate bias
+        hidden_size           integer, Number of elements in hidden state and cell state
+        static_features_use   list of strings, Names of static features for model to use
+        dynamic_features_use  list of strings, Names of dynamic features for model to use
+        depths_use            list of floats, depth values of temperatures for model to use
+        seed                  integer, Seed for the random number generator
+        valid_frac            float, Fraction of examples to put into the validation set
+        batch_size            integer, Number of examples per training batch
+
+    """
+    # Get objects for training
+    # model, loss function, optimizer, training data loader, validation data loader
+
+    # Create dataloaders
+    train_data_loader, valid_data_loader = get_data(
+        npz_filepath,
+        config['dynamic_features_use'],
+        config['static_features_use'],
+        config['depths_use'],
+        config['batch_size'],
+        config['valid_frac'],
+        config['seed']
+    )
+
+    n_depths = len(config['depths_use'])
+    n_dynamic = len(config['dynamic_features_use'])
+    n_static = len(config['static_features_use'])
+
+    # Create model and optimizer
+    model, optimizer = get_model(n_depths,
+                                 n_dynamic,
+                                 n_static,
+                                 config['hidden_size'],
+                                 config['initial_forget_bias'],
+                                 config['dropout'],
+                                 config['concat_static'],
+                                 config['learning_rate'])
+    # Get loss function
+    # Equivalent to loss_func = nn.MSELoss()
+    criterion_class = getattr(nn, config['loss_criterion'])
+    loss_func = criterion_class()
+
+    # Training loop
+    fit(config['max_epochs'], model, loss_func, optimizer, train_data_loader, valid_data_loader)
+    print('Finished Training')
+    save_no_overwrite(model, weights_file)
+
 
