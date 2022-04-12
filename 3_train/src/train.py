@@ -89,7 +89,7 @@ def split(dataset, fraction, seed):
 def get_data_loaders(train_ds, valid_ds, batch_size):
     """
     Get data loaders for both the train dataset and the validate dataset
-
+    
     Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#create-fit-and-get-data
 
     :param train_ds: Dataset for training data
@@ -115,7 +115,7 @@ def get_data(npz_filepath,
              seed):
     """
     Get train and validate dataloaders from npz file
-
+    
     Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#create-fit-and-get-data
 
     :param npz_filepath: Name and path to .npz data file
@@ -175,7 +175,7 @@ def get_model(
 ):
     """
     Return LSTM model and optimizer
-
+    
     Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#refactor-using-optim
 
     :param n_depths: Number of depths at which to predict temperatures (number
@@ -214,9 +214,9 @@ def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
     """
     Evaluate loss for one batch of inputs and outputs, and optionally update model
     parameters by backpropagation
-
+    
     Non-finite (e.g. NaN) values in y are ignored.
-
+    
     Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#create-fit-and-get-data
 
     :param model: PyTorch model inheriting nn.Module()
@@ -250,7 +250,7 @@ def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
 def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
     """
     Train the model, and compute training and validation losses for each epoch
-
+    
     Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#create-fit-and-get-data
 
     :param epochs: Maximum number of training epochs
@@ -294,15 +294,17 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
         valid_losses.append(val_loss)
 
 
-def save_no_overwrite(model, filepath):
+def save_weights(model, filepath, overwrite=True):
     """
-    Save torch model without overwriting an existing file
+    Save weights of a torch model
     
-    Append a unique number to the end of the filename to avoid overwriting any
-    existing files.
+    Optionally, append a unique number to the end of the filename to avoid
+    overwriting any existing files.
 
     :param model: PyTorch model to be saved
     :param filepath: Path and filename to save to
+    :param overwrite:  (Default value = True) If True, overwrite existing file
+        if necessary
 
     """
     # Create new directory if needed
@@ -310,18 +312,20 @@ def save_no_overwrite(model, filepath):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    root, extension = os.path.splitext(filepath)
-    suffix = 0
-    while os.path.exists(filepath):
-        suffix += 1
-        filepath = f'{root}_{suffix}{extension}'
+    if not overwrite:
+        # Append unique suffix to filename
+        root, extension = os.path.splitext(filepath)
+        suffix = 0
+        while os.path.exists(filepath):
+            suffix += 1
+            filepath = f'{root}_{suffix}{extension}'
     torch.save(model.state_dict(), filepath)
 
 
 def main(npz_filepath, weights_file, config):
     """
     Train a model and save the trained weights
-
+    
     Load training and validation data from a .npz file. Use the settings
     specified in the config dictionary. Train the model, and save its weights.
 
@@ -378,7 +382,7 @@ def main(npz_filepath, weights_file, config):
     # Training loop
     fit(config['max_epochs'], model, loss_func, optimizer, train_data_loader, valid_data_loader)
     print('Finished Training')
-    save_no_overwrite(model, weights_file)
+    save_weights(model, weights_file, overwrite=True)
 
 
 
