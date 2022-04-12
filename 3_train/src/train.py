@@ -2,7 +2,7 @@ import os
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 from torch.optim import Adam
 
 import sys
@@ -65,6 +65,25 @@ class SequenceDataset(Dataset):
         dynamic_features = self.sequences[idx, :, self.n_outputs:self.n_outputs + self.n_dynamic]
         static_features = self.sequences[idx, :, -self.n_static:]
         return dynamic_features, static_features, temperatures
+
+
+def split(dataset, fraction, seed):
+    """
+    Randomly split a dataset into two non-overlapping subsets
+
+    :param dataset: A torch.utils.data.Dataset to be split
+    :param fraction: The fraction of data samples to put in the first subset
+    :param seed: Seed for random number generator
+    :returns: Tuple of two datasets for the two subsets
+
+    """
+    # split into two subsets
+    n_total = len(dataset)
+    n_1 = int(round(n_total * fraction))
+    n_2 = n_total - n_1
+    subset_1, subset_2 = random_split(
+        dataset, [n_1, n_2], generator=torch.Generator().manual_seed(seed))
+    return subset_1, subset_2
 
 
 def get_dataloader(npz_filepath,
