@@ -246,3 +246,50 @@ def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
     # return loss.item(), len(y)
     return loss.item(), torch.sum(loss_idx)
 
+
+def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
+    """
+    Train the model, and compute training and validation losses for each epoch
+
+    Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#create-fit-and-get-data
+
+    :param epochs: Maximum number of training epochs
+    :param model: PyTorch model inheriting nn.Module()
+    :param loss_func: PyTorch loss function, e.g., nn.MSELoss()
+    :param opt: Optimizer to use to update model parameters
+    :param train_dl: PyTorch DataLoader with training data
+    :param valid_dl: PyTorch DataLoader with validation data
+
+    """
+
+    # Count number of observations in training and validation sets
+    n_train = 0
+    for x_d, x_s, y in train_dl:
+        n_train += torch.sum(torch.isfinite(y))
+    n_valid = 0
+    for x_d, x_s, y in valid_dl:
+        n_valid += torch.sum(torch.isfinite(y))
+
+    train_losses = []
+    valid_losses = []
+    print('Epoch: train loss, validate loss')
+    for epoch in range(epochs):  # loop over the dataset multiple times
+        model.train()
+        train_loss = 0.0
+        # data is ordered as [dynamic inputs, static inputs, labels]
+        for x_d, x_s, y in train_dl:
+            batch_loss, batch_count = loss_batch(model, loss_func, x_d, x_s, y, opt)
+
+            # Track this epoch's loss
+            train_loss += batch_loss * batch_count/n_train
+
+        model.eval()
+        with torch.no_grad():
+            losses, nums = zip(
+                *[loss_batch(model, loss_func, x_d, x_s, y) for x_d, x_s, y in valid_dl]
+            )
+        val_loss = np.sum(np.multiply(losses, nums)) / np.sum(nums)
+        print(f'{epoch}: {train_loss}, {val_loss}')
+        train_losses.append(train_loss)
+        valid_losses.append(val_loss)
+
