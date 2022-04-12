@@ -293,3 +293,27 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
         train_losses.append(train_loss)
         valid_losses.append(val_loss)
 
+
+def save_no_overwrite(model, filepath):
+    """
+    Save torch model without overwriting an existing file
+    
+    Append a unique number to the end of the filename to avoid overwriting any
+    existing files.
+
+    :param model: PyTorch model to be saved
+    :param filepath: Path and filename to save to
+
+    """
+    # Create new directory if needed
+    directory = os.path.dirname(filepath)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    root, extension = os.path.splitext(filepath)
+    suffix = 0
+    while os.path.exists(filepath):
+        suffix += 1
+        filepath = f'{root}_{suffix}{extension}'
+    torch.save(model.state_dict(), filepath)
+
