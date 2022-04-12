@@ -1,9 +1,10 @@
 include: "1_fetch.smk"
 include: "2_process.smk"
+include: "3_train.smk"
 
 
 rule all:
     input:
-        "1_fetch/in/pull_date.txt",
-        "2_process/out/mntoha_sequences/mntoha_sequences_summary.csv"
+        pull_date = "1_fetch/in/pull_date.txt",
+        weights_file = "3_train/out/mntoha/lstm.pt"
 

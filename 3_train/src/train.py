@@ -381,3 +381,9 @@ def main(npz_filepath, weights_file, config):
     save_no_overwrite(model, weights_file)
 
 
+
+if __name__ == '__main__':
+    main(snakemake.input.npz_filepath,
+         snakemake.output.weights_file,
+         snakemake.params.config)
+
