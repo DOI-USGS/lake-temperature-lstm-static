@@ -170,11 +170,10 @@ def get_model(
     hidden_size,
     initial_forget_bias,
     dropout,
-    concat_static,
-    learning_rate
+    concat_static
 ):
     """
-    Return LSTM model and optimizer
+    Create LSTM torch model
     
     Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#refactor-using-optim
 
@@ -186,8 +185,7 @@ def get_model(
     :param initial_forget_bias: Value of the initial forget gate bias
     :param dropout: Dropout probability, from 0 to 1 (0 = don't use dropout)
     :param concat_static: If True, uses standard LSTM. Otherwise, uses EA-LSTM
-    :param learning_rate: Learning rate for optimizer
-    :returns: Tuple of model and optimizer
+    :returns: LSTM torch model
 
     """
     if torch.cuda.is_available():
@@ -206,8 +204,7 @@ def get_model(
         concat_static=concat_static
     ).to(device)
 
-    optimizer = Adam(model.parameters(), lr=learning_rate)
-    return model, optimizer
+    return model
 
 
 def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
@@ -365,15 +362,18 @@ def main(npz_filepath, weights_file, config):
     n_dynamic = len(config['dynamic_features_use'])
     n_static = len(config['static_features_use'])
 
-    # Create model and optimizer
-    model, optimizer = get_model(n_depths,
-                                 n_dynamic,
-                                 n_static,
-                                 config['hidden_size'],
-                                 config['initial_forget_bias'],
-                                 config['dropout'],
-                                 config['concat_static'],
-                                 config['learning_rate'])
+    # Create model
+    model = get_model(n_depths,
+                      n_dynamic,
+                      n_static,
+                      config['hidden_size'],
+                      config['initial_forget_bias'],
+                      config['dropout'],
+                      config['concat_static'])
+
+    # Create optimizer
+    optimizer = Adam(model.parameters(), lr=config['learning_rate'])
+
     # Get loss function
     # Equivalent to loss_func = nn.MSELoss()
     criterion_class = getattr(nn, config['loss_criterion'])
