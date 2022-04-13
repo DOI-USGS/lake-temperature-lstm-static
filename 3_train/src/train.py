@@ -319,7 +319,7 @@ def save_weights(model, filepath, overwrite=True):
     torch.save(model.state_dict(), filepath)
 
 
-def main(npz_filepath, weights_file, config):
+def main(npz_filepath, weights_filepath, config):
     """
     Train a model and save the trained weights
     
@@ -327,7 +327,7 @@ def main(npz_filepath, weights_file, config):
     specified in the config dictionary. Train the model, and save its weights.
 
     :param npz_filepath: Name and path to .npz data file
-    :param weights_file: Path and filename to save weights to
+    :param weights_filepath: Path and filename to save weights to
     :param config: Dictionary of configuration settings, including:
         max_epochs            integer, Maximum number of epochs to train for
         loss_criterion        string, Name of class in torch.nn to use for loss
@@ -382,12 +382,13 @@ def main(npz_filepath, weights_file, config):
     # Training loop
     fit(config['max_epochs'], model, loss_func, optimizer, train_data_loader, valid_data_loader)
     print('Finished Training')
-    save_weights(model, weights_file, overwrite=True)
 
+    # Save model weights
+    save_weights(model, weights_filepath, overwrite=True)
 
 
 if __name__ == '__main__':
     main(snakemake.input.npz_filepath,
-         snakemake.output.weights_file,
+         snakemake.output.weights_filepath,
          snakemake.params.config)
 
