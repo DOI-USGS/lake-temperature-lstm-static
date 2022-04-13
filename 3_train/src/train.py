@@ -319,7 +319,48 @@ def save_weights(model, filepath, overwrite=True):
     torch.save(model.state_dict(), filepath)
 
 
-def main(npz_filepath, weights_filepath, config):
+def save_settings(config, npz_filepath, save_filepath, overwrite=True):
+    """
+    Save configuration settings and metadata
+    
+    Optionally, append a unique number to the end of the filename to avoid
+    overwriting any existing files.
+
+    :param config: Dictionary of configuration settings to save
+    :param npz_filepath: Name and path to .npz data file
+    :param save_filepath: Path and filename to save to
+    :param overwrite:  (Default value = True) If True, overwrite existing file
+        if necessary
+
+    """
+    # Create new directory if needed
+    directory = os.path.dirname(save_filepath)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    if not overwrite:
+        # Append unique suffix to filename
+        root, extension = os.path.splitext(save_filepath)
+        suffix = 0
+        while os.path.exists(save_filepath):
+            suffix += 1
+            save_filepath = f'{root}_{suffix}{extension}'
+
+    # Save all metadata in npz...
+    data_npz = np.load(npz_filepath)
+    # ...but not the training data itself
+    data_npz.files.remove('data')
+    # Combine training data settings and config into a new metadata dictionary
+    metadata = {}
+    for key in data_npz:
+        metadata[key] = data_npz[key]
+    # Any duplicate keys get overwritten by the value in config
+    for key in config:
+        metadata[key] = config[key]
+    np.savez(save_filepath, **metadata)
+
+
+def main(npz_filepath, weights_filepath, settings_filepath, config):
     """
     Train a model and save the trained weights
     
@@ -328,6 +369,7 @@ def main(npz_filepath, weights_filepath, config):
 
     :param npz_filepath: Name and path to .npz data file
     :param weights_filepath: Path and filename to save weights to
+    :param settings_filepath: Path and filename to save settings to
     :param config: Dictionary of configuration settings, including:
         max_epochs            integer, Maximum number of epochs to train for
         loss_criterion        string, Name of class in torch.nn to use for loss
@@ -385,10 +427,13 @@ def main(npz_filepath, weights_filepath, config):
 
     # Save model weights
     save_weights(model, weights_filepath, overwrite=True)
+    # Save model settings
+    save_settings(config, npz_filepath, settings_filepath, overwrite=True)
 
 
 if __name__ == '__main__':
     main(snakemake.input.npz_filepath,
          snakemake.output.weights_filepath,
+         snakemake.output.settings_filepath,
          snakemake.params.config)
 
