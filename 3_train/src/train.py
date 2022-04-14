@@ -270,7 +270,7 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, verbose=False):
     for x_d, x_s, y in valid_dl:
         n_valid += torch.sum(torch.isfinite(y))
 
-    def vprint(*args):
+    def verbose_print(*args):
         # Only print if verbose is true
         if verbose:
             print(*args)
@@ -283,29 +283,29 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, verbose=False):
         model.train()
         train_loss = 0.0
         # Data is ordered as [dynamic inputs, static inputs, labels]
-        vprint('Train loss by batch')
+        verbose_print('Train loss by batch')
         for x_d, x_s, y in train_dl:
             batch_loss, batch_count = loss_batch(model, loss_func, x_d, x_s, y, opt)
 
             # Weight the batch loss based on number of observations in each batch
-            vprint(batch_loss, batch_count)
+            verbose_print(batch_loss, batch_count)
             train_loss += batch_loss * batch_count/n_train
 
         # Loss for each validation batch, with number of obs per batch
         model.eval()
-        val_loss = 0.0
-        vprint('Validation loss by batch')
+        valid_loss = 0.0
+        verbose_print('Validation loss by batch')
         with torch.no_grad():
             for x_d, x_s, y in valid_dl:
                 batch_loss, batch_count = loss_batch(model, loss_func, x_d, x_s, y)
 
                 # Weight the batch loss based on number of observations in each batch
-                vprint(batch_loss, batch_count)
-                val_loss += batch_loss * batch_count/n_valid
+                verbose_print(batch_loss, batch_count)
+                valid_loss += batch_loss * batch_count/n_valid
 
-        print(f'{epoch}: {train_loss}, {val_loss}')
+        print(f'{epoch}: {train_loss}, {valid_loss}')
         train_losses.append(train_loss)
-        valid_losses.append(val_loss)
+        valid_losses.append(valid_loss)
     return train_losses, valid_losses
 
 
