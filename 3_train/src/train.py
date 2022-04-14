@@ -1,3 +1,5 @@
+# Train an LSTM and save the results with metadata
+
 import os
 import numpy as np
 import torch
@@ -240,7 +242,7 @@ def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
         opt.step()
         opt.zero_grad()
 
-    # return loss.item(), len(y)
+    # return loss, number of finite values in y
     return loss.item(), torch.sum(loss_idx)
 
 
@@ -259,7 +261,7 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
 
     """
 
-    # Count number of observations in training and validation sets
+    # Count number of non-NaN observations in training and validation sets
     n_train = 0
     for x_d, x_s, y in train_dl:
         n_train += torch.sum(torch.isfinite(y))
@@ -270,21 +272,24 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
     train_losses = []
     valid_losses = []
     print('Epoch: train loss, validate loss')
-    for epoch in range(epochs):  # loop over the dataset multiple times
+    # Training loop
+    for epoch in range(epochs):
         model.train()
         train_loss = 0.0
-        # data is ordered as [dynamic inputs, static inputs, labels]
+        # Data is ordered as [dynamic inputs, static inputs, labels]
         for x_d, x_s, y in train_dl:
             batch_loss, batch_count = loss_batch(model, loss_func, x_d, x_s, y, opt)
 
-            # Track this epoch's loss
+            # Weight the batch loss based on number of observations in each batch
             train_loss += batch_loss * batch_count/n_train
 
         model.eval()
+        # Loss for each validation batch, with number of obs per batch
         with torch.no_grad():
             losses, nums = zip(
                 *[loss_batch(model, loss_func, x_d, x_s, y) for x_d, x_s, y in valid_dl]
             )
+        # Average validation loss
         val_loss = np.sum(np.multiply(losses, nums)) / np.sum(nums)
         print(f'{epoch}: {train_loss}, {val_loss}')
         train_losses.append(train_loss)
@@ -322,6 +327,9 @@ def save_weights(model, filepath, overwrite=True):
 def save_settings(config, npz_filepath, save_filepath, overwrite=True):
     """
     Save configuration settings and metadata
+    
+    Combine the metadata in config with the metadata in the npz
+    file and save the combination to a new output npz file.
     
     Optionally, append a unique number to the end of the filename to avoid
     overwriting any existing files.
