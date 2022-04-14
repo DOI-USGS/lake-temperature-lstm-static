@@ -246,7 +246,7 @@ def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
     return loss.item(), torch.sum(loss_idx).item()
 
 
-def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
+def fit(epochs, model, loss_func, opt, train_dl, valid_dl, verbose=False):
     """
     Train the model, and compute training and validation losses for each epoch
     
@@ -270,6 +270,11 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
     for x_d, x_s, y in valid_dl:
         n_valid += torch.sum(torch.isfinite(y))
 
+    def vprint(*args):
+        # Only print if verbose is true
+        if verbose:
+            print(*args)
+
     train_losses = []
     valid_losses = []
     print('Epoch: train loss, validate loss')
@@ -278,10 +283,12 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
         model.train()
         train_loss = 0.0
         # Data is ordered as [dynamic inputs, static inputs, labels]
+        vprint('Train loss by batch')
         for x_d, x_s, y in train_dl:
             batch_loss, batch_count = loss_batch(model, loss_func, x_d, x_s, y, opt)
 
             # Weight the batch loss based on number of observations in each batch
+            vprint(batch_loss, batch_count)
             train_loss += batch_loss * batch_count/n_train
 
         model.eval()
@@ -290,6 +297,9 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
             losses, nums = zip(
                 *[loss_batch(model, loss_func, x_d, x_s, y) for x_d, x_s, y in valid_dl]
             )
+        vprint('Validation loss by batch')
+        for loss, num in zip(losses, nums):
+            vprint(loss, num)
         # Average validation loss
         val_loss = np.sum(np.multiply(losses, nums)) / np.sum(nums)
         print(f'{epoch}: {train_loss}, {val_loss}')
