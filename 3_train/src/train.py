@@ -291,17 +291,18 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, verbose=False):
             vprint(batch_loss, batch_count)
             train_loss += batch_loss * batch_count/n_train
 
-        model.eval()
         # Loss for each validation batch, with number of obs per batch
-        with torch.no_grad():
-            losses, nums = zip(
-                *[loss_batch(model, loss_func, x_d, x_s, y) for x_d, x_s, y in valid_dl]
-            )
+        model.eval()
+        val_loss = 0.0
         vprint('Validation loss by batch')
-        for loss, num in zip(losses, nums):
-            vprint(loss, num)
-        # Average validation loss
-        val_loss = np.sum(np.multiply(losses, nums)) / np.sum(nums)
+        with torch.no_grad():
+            for x_d, x_s, y in valid_dl:
+                batch_loss, batch_count = loss_batch(model, loss_func, x_d, x_s, y)
+
+                # Weight the batch loss based on number of observations in each batch
+                vprint(batch_loss, batch_count)
+                val_loss += batch_loss * batch_count/n_valid
+
         print(f'{epoch}: {train_loss}, {val_loss}')
         train_losses.append(train_loss)
         valid_losses.append(val_loss)
