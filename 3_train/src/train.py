@@ -243,7 +243,7 @@ def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
         opt.zero_grad()
 
     # return loss, number of finite values in y
-    return loss.item(), torch.sum(loss_idx)
+    return loss.item(), torch.sum(loss_idx).item()
 
 
 def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
@@ -258,6 +258,7 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
     :param opt: Optimizer to use to update model parameters
     :param train_dl: PyTorch DataLoader with training data
     :param valid_dl: PyTorch DataLoader with validation data
+    :returns: Tuple of arrays of training and validation losses for each epoch
 
     """
 
@@ -294,6 +295,7 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
         print(f'{epoch}: {train_loss}, {val_loss}')
         train_losses.append(train_loss)
         valid_losses.append(val_loss)
+    return train_losses, valid_losses
 
 
 def save_weights(model, filepath, overwrite=True):
@@ -324,7 +326,7 @@ def save_weights(model, filepath, overwrite=True):
     torch.save(model.state_dict(), filepath)
 
 
-def save_settings(config, npz_filepath, save_filepath, overwrite=True):
+def save_metadata(config, npz_filepath, save_filepath, overwrite=True):
     """
     Save configuration settings and metadata
     
@@ -334,8 +336,8 @@ def save_settings(config, npz_filepath, save_filepath, overwrite=True):
     Optionally, append a unique number to the end of the filename to avoid
     overwriting any existing files.
 
-    :param config: Dictionary of configuration settings to save
-    :param npz_filepath: Name and path to .npz data file
+    :param config: Dictionary of configuration settings and training results to save
+    :param npz_filepath: Name and path to .npz data file containing training data
     :param save_filepath: Path and filename to save to
     :param overwrite:  (Default value = True) If True, overwrite existing file
         if necessary
@@ -368,7 +370,7 @@ def save_settings(config, npz_filepath, save_filepath, overwrite=True):
     np.savez(save_filepath, **metadata)
 
 
-def main(npz_filepath, weights_filepath, settings_filepath, config):
+def main(npz_filepath, weights_filepath, metadata_filepath, config):
     """
     Train a model and save the trained weights
     
@@ -377,7 +379,7 @@ def main(npz_filepath, weights_filepath, settings_filepath, config):
 
     :param npz_filepath: Name and path to .npz data file
     :param weights_filepath: Path and filename to save weights to
-    :param settings_filepath: Path and filename to save settings to
+    :param metadata_filepath: Path and filename to save metadata to
     :param config: Dictionary of configuration settings, including:
         max_epochs            integer, Maximum number of epochs to train for
         loss_criterion        string, Name of class in torch.nn to use for loss
@@ -430,18 +432,20 @@ def main(npz_filepath, weights_filepath, settings_filepath, config):
     loss_func = criterion_class()
 
     # Training loop
-    fit(config['max_epochs'], model, loss_func, optimizer, train_data_loader, valid_data_loader)
+    train_losses, valid_losses = fit(config['max_epochs'], model, loss_func, optimizer, train_data_loader, valid_data_loader)
     print('Finished Training')
 
     # Save model weights
     save_weights(model, weights_filepath, overwrite=True)
-    # Save model settings
-    save_settings(config, npz_filepath, settings_filepath, overwrite=True)
+    # Save model settings and training metrics
+    config['train_losses'] = train_losses
+    config['valid_losses'] = valid_losses
+    save_metadata(config, npz_filepath, metadata_filepath, overwrite=True)
 
 
 if __name__ == '__main__':
     main(snakemake.input.npz_filepath,
          snakemake.output.weights_filepath,
-         snakemake.output.settings_filepath,
+         snakemake.output.metadata_filepath,
          snakemake.params.config)
 

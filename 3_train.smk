@@ -7,7 +7,7 @@ rule train_model:
         npz_filepath = "2_process/out/{data_source}/train.npz"
     output:
         weights_filepath = "3_train/out/{data_source}/{run}/lstm.pt",
-        settings_filepath = "3_train/out/{data_source}/{run}/settings.npz"
+        metadata_filepath = "3_train/out/{data_source}/{run}/metadata.npz"
     params:
         config = config
     script:
