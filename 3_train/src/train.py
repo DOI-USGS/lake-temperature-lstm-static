@@ -396,6 +396,9 @@ def main(npz_filepath, weights_filepath, metadata_filepath, config):
         batch_size            integer, Number of examples per training batch
 
     """
+    # Set seed to encourage reprodicibility
+    torch.manual_seed(config['seed'])
+
     # Get objects for training
     # model, loss function, optimizer, training data loader, validation data loader
 
