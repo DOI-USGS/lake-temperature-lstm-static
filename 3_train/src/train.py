@@ -1,4 +1,4 @@
-# Train an LSTM and save the results with metadata
+# Train an LSTM or EA-LSTM and save the results with metadata
 
 import os
 import numpy as np
@@ -175,7 +175,7 @@ def get_model(
     concat_static
 ):
     """
-    Create LSTM torch model
+    Create LSTM or EA-LSTM torch model
     
     Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#refactor-using-optim
 
@@ -187,7 +187,7 @@ def get_model(
     :param initial_forget_bias: Value of the initial forget gate bias
     :param dropout: Dropout probability, from 0 to 1 (0 = don't use dropout)
     :param concat_static: If True, uses standard LSTM. Otherwise, uses EA-LSTM
-    :returns: LSTM torch model
+    :returns: LSTM or EA-LSTM torch model
 
     """
     if torch.cuda.is_available():
