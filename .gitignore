@@ -165,6 +165,7 @@ dmypy.json
 2_process/log
 2_process/tmp
 2_process/out
+3_train/out
 
 # Specific files to include
 !/notebooks/Explore_MNTOHA_temperature_observations.html
