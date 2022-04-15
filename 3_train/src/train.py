@@ -235,6 +235,10 @@ def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
     pred, h, c = model(x_d, x_s[:, 0, :])
     # Only compute loss where y is finite
     loss_idx = torch.isfinite(y)
+    # There should be at least one finite value in y
+    if not loss_idx.any():
+        raise ValueError('All temperature labels in this batch are not finite'
+                         ' (NaN, infinity, or negative infinity)')
     loss = loss_func(pred[loss_idx], y[loss_idx])
 
     if opt is not None:
