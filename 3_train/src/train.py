@@ -246,6 +246,11 @@ def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
         opt.step()
         opt.zero_grad()
 
+    # NaN in the loss can cause training to fail silently
+    # Better to fail loudly!
+    if not torch.isfinite(loss):
+        raise ValueError(f'Batch loss is not finite. Its value is {loss}.')
+
     # return loss, number of finite values in y
     return loss.item(), torch.sum(loss_idx).item()
 
