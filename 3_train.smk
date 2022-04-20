@@ -31,3 +31,11 @@ rule train_model:
     script:
         "3_train/src/train.py"
 
+# Summarize all training runs so far
+rule summarize_training_runs:
+    # No inputs because we don't want this rule to trigger the train_model rule
+    output: 
+        summary_filepath = "3_train/out/{data_source}/summary.csv"
+    script:
+        "3_train/src/summarize.py"
+
