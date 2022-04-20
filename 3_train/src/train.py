@@ -1,6 +1,7 @@
 # Train an LSTM or EA-LSTM and save the results with metadata
 
 import os
+import subprocess
 import numpy as np
 import torch
 import torch.nn as nn
@@ -390,6 +391,18 @@ def save_metadata(config, npz_filepath, save_filepath, overwrite=True):
     np.savez(save_filepath, **metadata)
 
 
+def get_git_hash():
+    """
+    Get the hash of the current git revision
+
+    From https://stackoverflow.com/questions/14989858/get-the-current-git-hash-in-a-python-script
+
+    :returns: String of current git revision's hash
+
+    """
+    return subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
+
+
 def main(npz_filepath, weights_filepath, metadata_filepath, config):
     """
     Train a model and save the trained weights
@@ -463,6 +476,7 @@ def main(npz_filepath, weights_filepath, metadata_filepath, config):
     # Save model settings and training metrics
     config['train_losses'] = train_losses
     config['valid_losses'] = valid_losses
+    config['git_hash'] = get_git_hash()
     save_metadata(config, npz_filepath, metadata_filepath, overwrite=True)
 
 
