@@ -414,7 +414,7 @@ def get_git_status():
     return subprocess.check_output(['git', 'status']).decode('ascii').strip()
 
 
-def main(npz_filepath, weights_filepath, metadata_filepath, config):
+def main(npz_filepath, weights_filepath, metadata_filepath, run_id, config):
     """
     Train a model and save the trained weights
     
@@ -424,6 +424,7 @@ def main(npz_filepath, weights_filepath, metadata_filepath, config):
     :param npz_filepath: Name and path to .npz data file
     :param weights_filepath: Path and filename to save weights to
     :param metadata_filepath: Path and filename to save metadata to
+    :param run_id: ID of the current training run (experiment)
     :param config: Dictionary of configuration settings, including:
         max_epochs            integer, Maximum number of epochs to train for
         loss_criterion        string, Name of class in torch.nn to use for loss
@@ -440,6 +441,10 @@ def main(npz_filepath, weights_filepath, metadata_filepath, config):
         batch_size            integer, Number of examples per training batch
 
     """
+    # Check that run_id in config matches output path
+    if not (run_id == config['run_id']):
+        raise ValueError(f"The values of 'run_id' do not match. 'run_id' in process_config.yaml is {config['run_id']}, but 'run_id' in the output filepath is {run_id}.")
+
     # Set seed to encourage reprodicibility
     torch.manual_seed(config['seed'])
 
@@ -496,5 +501,6 @@ if __name__ == '__main__':
     main(snakemake.input.npz_filepath,
          snakemake.output.weights_filepath,
          snakemake.output.metadata_filepath,
+         snakemake.params.run_id,
          snakemake.params.config)
 

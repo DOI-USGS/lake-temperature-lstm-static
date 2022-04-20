@@ -6,10 +6,11 @@ rule train_model:
     input:
         npz_filepath = "2_process/out/{data_source}/train.npz"
     output:
-        weights_filepath = "3_train/out/{data_source}/{run}/lstm.pt",
-        metadata_filepath = "3_train/out/{data_source}/{run}/metadata.npz"
+        weights_filepath = "3_train/out/{data_source}/{run_id}/lstm.pt",
+        metadata_filepath = "3_train/out/{data_source}/{run_id}/metadata.npz"
     params:
-        config = config
+        config = config,
+        run_id = lambda wildcards: wildcards.run_id
     script:
         "3_train/src/train.py"
 

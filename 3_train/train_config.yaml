@@ -1,3 +1,7 @@
+# ID of this run
+run_id: '1'
+run_description: 'Initial run'
+
 # features to use
 dynamic_features_use: ['ShortWave', 'LongWave', 'AirTemp', 'RelHum',
                         'WindSpeed', 'Rain', 'Snow']
