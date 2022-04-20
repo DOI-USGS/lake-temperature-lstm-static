@@ -403,6 +403,17 @@ def get_git_hash():
     return subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 
 
+def get_git_status():
+    """
+    Get the output of the `git status` command
+
+    :returns: String of output of `git status`
+
+    """
+    # status = str(subprocess.Popen(['git status'], cwd = None if code_dir=="" else code_dir,shell=True,stdout=subprocess.PIPE).communicate()[0]).split("\\n")
+    return subprocess.check_output(['git', 'status']).decode('ascii').strip()
+
+
 def main(npz_filepath, weights_filepath, metadata_filepath, config):
     """
     Train a model and save the trained weights
@@ -477,6 +488,7 @@ def main(npz_filepath, weights_filepath, metadata_filepath, config):
     config['train_losses'] = train_losses
     config['valid_losses'] = valid_losses
     config['git_hash'] = get_git_hash()
+    config['git_status'] = get_git_status()
     save_metadata(config, npz_filepath, metadata_filepath, overwrite=True)
 
 
