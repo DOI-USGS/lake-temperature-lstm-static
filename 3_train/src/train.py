@@ -268,7 +268,7 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, verbose=False):
     :param opt: Optimizer to use to update model parameters
     :param train_dl: PyTorch DataLoader with training data
     :param valid_dl: PyTorch DataLoader with validation data
-    :param verbose: Print more messages during execution 
+    :param verbose: Print more messages during execution
         (Default value = False)
     :returns: Tuple of arrays of training and validation losses for each epoch
 
@@ -496,6 +496,7 @@ def main(npz_filepath, weights_filepath, metadata_filepath, run_id, config):
     # Save model settings and training metrics
     config['train_losses'] = train_losses
     config['valid_losses'] = valid_losses
+    config['n_epochs_trained'] = len(train_losses)
     config['git_hash'] = get_git_hash()
     config['git_status'] = get_git_status()
     save_metadata(config, npz_filepath, metadata_filepath, overwrite=True)
