@@ -268,6 +268,8 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, verbose=False):
     :param opt: Optimizer to use to update model parameters
     :param train_dl: PyTorch DataLoader with training data
     :param valid_dl: PyTorch DataLoader with validation data
+    :param verbose: Print more messages during execution 
+        (Default value = False)
     :returns: Tuple of arrays of training and validation losses for each epoch
 
     """
@@ -328,8 +330,9 @@ def save_weights(model, filepath, overwrite=True):
 
     :param model: PyTorch model to be saved
     :param filepath: Path and filename to save to
-    :param overwrite:  (Default value = True) If True, overwrite existing file
-        if necessary
+    :param overwrite: If True, overwrite existing file if necessary. If False,
+        append a unique suffix to the filename before saving.
+        (Default value = True)
 
     """
     # Create new directory if needed
@@ -360,8 +363,9 @@ def save_metadata(config, npz_filepath, save_filepath, overwrite=True):
     :param config: Dictionary of configuration settings and training results to save
     :param npz_filepath: Name and path to .npz data file containing training data
     :param save_filepath: Path and filename to save to
-    :param overwrite:  (Default value = True) If True, overwrite existing file
-        if necessary
+    :param overwrite: If True, overwrite existing file if necessary. If False,
+        append a unique suffix to the filename before saving.
+        (Default value = True)
 
     """
     # Create new directory if needed
