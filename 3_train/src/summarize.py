@@ -14,7 +14,7 @@ FILES_TO_EXCLUDE = [
 def read_npz_as_dataframe(npz_name):
     """
     Read a numpy npz and convert to a pandas DataFrame.
-
+    
     Exclude specific files that are inside the npz from the DataFrame because
     they are long lists that don't need to be saved to a summary file.
 
@@ -33,13 +33,13 @@ def read_npz_as_dataframe(npz_name):
 def main(summary_filepath):
     """
     Summarize all trained models in all subdirectories of a given root directory.
-
+    
     Read in all .npz files in the subdirectories of the root and assume that
     all .npz files are metadata files saved to accompany trained models.
     Extract information to summarize from those .npz files, and save it to a
     csv. Use the combination of the run_id and the model_id to create a unique
     identifier for every trained model, and save that in the first column of
-    the summary csv. 
+    the summary csv.
 
     :param summary_filepath: File path of the summarizing csv to create
 
