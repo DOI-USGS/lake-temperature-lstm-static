@@ -23,11 +23,14 @@ rule train_model:
         process_config = "3_train/out/{data_source}/{run_id}/process_config.yaml",
         train_config = "3_train/out/{data_source}/{run_id}/train_config.yaml"
     output:
-        weights_filepath = "3_train/out/{data_source}/{run_id}/lstm.pt",
-        metadata_filepath = "3_train/out/{data_source}/{run_id}/metadata.npz"
+        weights_filepath = "3_train/out/{data_source}/{run_id}/{model_id}_weights.pt",
+        metadata_filepath = "3_train/out/{data_source}/{run_id}/{model_id}_metadata.npz"
     params:
         config = config,
-        run_id = lambda wildcards: wildcards.run_id
+        run_id = lambda wildcards: wildcards.run_id,
+        model_id = lambda wildcards: wildcards.model_id
+    threads:
+        16
     script:
         "3_train/src/train.py"
 

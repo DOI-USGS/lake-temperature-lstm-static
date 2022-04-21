@@ -32,8 +32,9 @@ def main(summary_filepath):
     dfs = [read_npz_as_dataframe(fn) for fn in metadata_files]
     # Concatenate list of DataFrames into one DataFrame
     summary_df = pd.concat(dfs, sort=False)
-    # run_id should be a unique identifier
-    summary_df.set_index('run_id', inplace=True)
+    # Use combination of run_id and model_id as a unique index
+    summary_df['full_id'] = summary_df['run_id'].astype(str) + '.' + summary_df['model_id'].astype(str)
+    summary_df.set_index('full_id', inplace=True)
     summary_df.to_csv(summary_filepath)
 
 if __name__ == '__main__':

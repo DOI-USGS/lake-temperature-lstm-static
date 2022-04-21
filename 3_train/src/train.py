@@ -419,7 +419,7 @@ def get_git_status():
     return subprocess.check_output(['git', 'status']).decode('ascii').strip()
 
 
-def main(npz_filepath, weights_filepath, metadata_filepath, run_id, config):
+def main(npz_filepath, weights_filepath, metadata_filepath, run_id, model_id, config):
     """
     Train a model and save the trained weights
     
@@ -497,6 +497,7 @@ def main(npz_filepath, weights_filepath, metadata_filepath, run_id, config):
     # Save model weights
     save_weights(model, weights_filepath, overwrite=True)
     # Save model settings and training metrics
+    config['model_id'] = model_id
     config['train_start_time'] = train_start_time
     config['train_end_time'] = train_end_time
     config['train_losses'] = train_losses
@@ -512,5 +513,6 @@ if __name__ == '__main__':
          snakemake.output.weights_filepath,
          snakemake.output.metadata_filepath,
          snakemake.params.run_id,
+         snakemake.params.model_id,
          snakemake.params.config)
 
