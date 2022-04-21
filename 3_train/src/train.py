@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+from datetime import datetime
 import numpy as np
 import torch
 import torch.nn as nn
@@ -488,12 +489,16 @@ def main(npz_filepath, weights_filepath, metadata_filepath, run_id, config):
     loss_func = criterion_class()
 
     # Training loop
+    train_start_time = str(datetime.now())
     train_losses, valid_losses = fit(config['max_epochs'], model, loss_func, optimizer, train_data_loader, valid_data_loader)
+    train_end_time = str(datetime.now())
     print('Finished Training')
 
     # Save model weights
     save_weights(model, weights_filepath, overwrite=True)
     # Save model settings and training metrics
+    config['train_start_time'] = train_start_time
+    config['train_end_time'] = train_end_time
     config['train_losses'] = train_losses
     config['valid_losses'] = valid_losses
     config['n_epochs_trained'] = len(train_losses)
