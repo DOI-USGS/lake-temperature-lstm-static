@@ -429,8 +429,12 @@ def main(npz_filepath, weights_filepath, metadata_filepath, run_id, model_id, co
     :param npz_filepath: Name and path to .npz data file
     :param weights_filepath: Path and filename to save weights to
     :param metadata_filepath: Path and filename to save metadata to
-    :param run_id: ID of the current training run (experiment)
+    :param run_id: ID of the current training run (experiment). Value must
+        match the run_id as defined in the config dictionary.
+    :param model_id: ID of the model to train within the current training run
     :param config: Dictionary of configuration settings, including:
+        run_id                string, ID of current run (experiment)
+        run_description       string, plain language description of current run
         max_epochs            integer, Maximum number of epochs to train for
         loss_criterion        string, Name of class in torch.nn to use for loss
         learning_rate         float, Learning rate of optimizer

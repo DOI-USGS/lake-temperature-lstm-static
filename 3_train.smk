@@ -22,7 +22,8 @@ rule save_config:
 rule train_model:
     input:
         npz_filepath = "2_process/out/{data_source}/train.npz",
-        # Include configs as inputs in order to save them to the output folder
+        # Include configs as inputs in order to trigger save_config rule,
+        # and save configs to the output folder
         process_config = "3_train/out/{data_source}/{run_id}/process_config.yaml",
         train_config = "3_train/out/{data_source}/{run_id}/train_config.yaml"
     output:
