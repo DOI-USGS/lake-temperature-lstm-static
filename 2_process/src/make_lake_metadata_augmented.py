@@ -36,8 +36,11 @@ def add_elevation_from_EPQS(in_file, out_file):
     Add "elevation" column to metadata file and save to new file.
     Use the USGS Elevation Point Query Service.
 
-    :param in_file: filename to read lake metadata from
-    :param out_file: filename to save to
+    Currently unused.
+
+    :param in_file: Filename of csv to read existing lake metadata from
+    :param out_file: Filename of csv to save metadata augmented with elevation
+        to
 
     """
     lake_metadata = pd.read_csv(in_file)
@@ -49,14 +52,17 @@ def add_elevation_from_EPQS(in_file, out_file):
     lake_metadata.to_csv(out_file)
 
 
-def add_elevation_from_file(in_file, elevation_file, out_file):
+def add_elevation_from_surface_metadata(in_file, elevation_file, out_file):
     """
     Add "elevation" column to metadata file and save to new file.
-    Use elevation data from another metadata file.
+    Use elevation data from surface metadata file from Willard et al., 2022
+    https://doi.org/10.1002/lol2.10249
 
-    :param in_file: filename to read lake metadata from
-    :param elevation_file: filename to read elevation data from
-    :param out_file: filename to save to
+    :param in_file: Filename of csv to read existing lake metadata from
+    :param elevation_file: Filename of surface metadata csv file to read
+        elevation data from
+    :param out_file: Filename of csv to save metadata augmented with elevation
+        to
 
     """
     lake_metadata = pd.read_csv(in_file)
@@ -69,7 +75,7 @@ def add_elevation_from_file(in_file, elevation_file, out_file):
 
     # If a site is missing from lake_elevations, 'elevation' in the merged
     # dataframe will be NaN in that site's row.
-    # If elevation is NaN, use EPQS to get elevation
+    # If elevation is NaN, use EPQS to fill in the missing elevation
     def fill_nan_from_EPQS(row):
         """
         Fill a NaN value in the 'elevation' column with elevation from the
@@ -91,6 +97,9 @@ def add_elevation_from_file(in_file, elevation_file, out_file):
 
 
 if __name__ == '__main__':
-    add_elevation_from_file(snakemake.input.mntoha_metadata,
-                            snakemake.input.surface_metadata,
-                            snakemake.output.augmented_metadata)
+    # Use surface metadata for elevations instead of USGS EPQS
+    add_elevation_from_surface_metadata(
+        snakemake.input.mntoha_metadata,
+        snakemake.input.surface_metadata,
+        snakemake.output.augmented_metadata
+    )
