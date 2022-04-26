@@ -24,7 +24,7 @@ def trigger_unzip_archive(file_category, archive_name):
 
 
 def get_obs_file(file_category, archive_name, obs_file_name):
-    '''
+    """
     Return temperature observations filepath.
 
     Depend on unzip_archive checkpoint to ensure that
@@ -37,7 +37,7 @@ def get_obs_file(file_category, archive_name, obs_file_name):
     :param obs_file_name: name of unzipped observation file
     :returns: Path of temperature observations csv
 
-    '''
+    """
     # Trigger checkpoint to unzip observation file
     obs_file_directory = trigger_unzip_archive(file_category, archive_name)
     return os.path.join(obs_file_directory, obs_file_name)

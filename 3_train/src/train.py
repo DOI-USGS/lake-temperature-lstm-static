@@ -1,6 +1,8 @@
 # Train an LSTM or EA-LSTM and save the results with metadata
 
 import os
+import subprocess
+from datetime import datetime
 import numpy as np
 import torch
 import torch.nn as nn
@@ -267,6 +269,8 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, verbose=False):
     :param opt: Optimizer to use to update model parameters
     :param train_dl: PyTorch DataLoader with training data
     :param valid_dl: PyTorch DataLoader with validation data
+    :param verbose: Print more messages during execution
+        (Default value = False)
     :returns: Tuple of arrays of training and validation losses for each epoch
 
     """
@@ -327,8 +331,9 @@ def save_weights(model, filepath, overwrite=True):
 
     :param model: PyTorch model to be saved
     :param filepath: Path and filename to save to
-    :param overwrite:  (Default value = True) If True, overwrite existing file
-        if necessary
+    :param overwrite: If True, overwrite existing file if necessary. If False,
+        append a unique suffix to the filename before saving.
+        (Default value = True)
 
     """
     # Create new directory if needed
@@ -359,8 +364,9 @@ def save_metadata(config, npz_filepath, save_filepath, overwrite=True):
     :param config: Dictionary of configuration settings and training results to save
     :param npz_filepath: Name and path to .npz data file containing training data
     :param save_filepath: Path and filename to save to
-    :param overwrite:  (Default value = True) If True, overwrite existing file
-        if necessary
+    :param overwrite: If True, overwrite existing file if necessary. If False,
+        append a unique suffix to the filename before saving.
+        (Default value = True)
 
     """
     # Create new directory if needed
@@ -390,7 +396,30 @@ def save_metadata(config, npz_filepath, save_filepath, overwrite=True):
     np.savez(save_filepath, **metadata)
 
 
-def main(npz_filepath, weights_filepath, metadata_filepath, config):
+def get_git_hash():
+    """
+    Get the hash of the current git revision
+
+    From https://stackoverflow.com/questions/14989858/get-the-current-git-hash-in-a-python-script
+
+    :returns: String of current git revision's hash
+
+    """
+    return subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
+
+
+def get_git_status():
+    """
+    Get the output of the `git status` command
+
+    :returns: String of output of `git status`
+
+    """
+    # status = str(subprocess.Popen(['git status'], cwd = None if code_dir=="" else code_dir,shell=True,stdout=subprocess.PIPE).communicate()[0]).split("\\n")
+    return subprocess.check_output(['git', 'status']).decode('ascii').strip()
+
+
+def main(npz_filepath, weights_filepath, metadata_filepath, run_id, model_id, config):
     """
     Train a model and save the trained weights
     
@@ -400,7 +429,12 @@ def main(npz_filepath, weights_filepath, metadata_filepath, config):
     :param npz_filepath: Name and path to .npz data file
     :param weights_filepath: Path and filename to save weights to
     :param metadata_filepath: Path and filename to save metadata to
+    :param run_id: ID of the current training run (experiment). Value must
+        match the run_id as defined in the config dictionary.
+    :param model_id: ID of the model to train within the current training run
     :param config: Dictionary of configuration settings, including:
+        run_id                string, ID of current run (experiment)
+        run_description       string, plain language description of current run
         max_epochs            integer, Maximum number of epochs to train for
         loss_criterion        string, Name of class in torch.nn to use for loss
         learning_rate         float, Learning rate of optimizer
@@ -416,6 +450,10 @@ def main(npz_filepath, weights_filepath, metadata_filepath, config):
         batch_size            integer, Number of examples per training batch
 
     """
+    # Check that run_id in config matches output path
+    if not (run_id == config['run_id']):
+        raise ValueError(f"The values of 'run_id' do not match. 'run_id' in process_config.yaml is {config['run_id']}, but 'run_id' in the output filepath is {run_id}.")
+
     # Set seed to encourage reprodicibility
     torch.manual_seed(config['seed'])
 
@@ -455,14 +493,22 @@ def main(npz_filepath, weights_filepath, metadata_filepath, config):
     loss_func = criterion_class()
 
     # Training loop
+    train_start_time = str(datetime.now())
     train_losses, valid_losses = fit(config['max_epochs'], model, loss_func, optimizer, train_data_loader, valid_data_loader)
+    train_end_time = str(datetime.now())
     print('Finished Training')
 
     # Save model weights
     save_weights(model, weights_filepath, overwrite=True)
     # Save model settings and training metrics
+    config['model_id'] = model_id
+    config['train_start_time'] = train_start_time
+    config['train_end_time'] = train_end_time
     config['train_losses'] = train_losses
     config['valid_losses'] = valid_losses
+    config['n_epochs_trained'] = len(train_losses)
+    config['git_hash'] = get_git_hash()
+    config['git_status'] = get_git_status()
     save_metadata(config, npz_filepath, metadata_filepath, overwrite=True)
 
 
@@ -470,5 +516,7 @@ if __name__ == '__main__':
     main(snakemake.input.npz_filepath,
          snakemake.output.weights_filepath,
          snakemake.output.metadata_filepath,
+         snakemake.params.run_id,
+         snakemake.params.model_id,
          snakemake.params.config)
 

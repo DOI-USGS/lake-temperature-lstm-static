@@ -6,5 +6,5 @@ include: "3_train.smk"
 rule all:
     input:
         pull_date = "1_fetch/in/pull_date.txt",
-        weights_filepath = "3_train/out/mntoha/0/lstm.pt"
+        summary_filepath = "3_train/out/mntoha/summary.csv"
 
