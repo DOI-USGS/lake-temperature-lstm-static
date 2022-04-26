@@ -56,7 +56,8 @@ def add_elevation_from_surface_metadata(in_file, elevation_file, out_file):
     """
     Add "elevation" column to metadata file and save to new file.
     Use elevation data from surface metadata file from Willard et al., 2022
-    https://doi.org/10.1002/lol2.10249
+    Publication: https://doi.org/10.1002/lol2.10249
+    Data release: https://www.sciencebase.gov/catalog/item/60341c3ed34eb12031172aa6
 
     :param in_file: Filename of csv to read existing lake metadata from
     :param elevation_file: Filename of surface metadata csv file to read

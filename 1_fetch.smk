@@ -40,7 +40,7 @@ rule fetch_mntoha_dynamic:
 
 
 # Download metadata for lakes across CONUS compiled by Willard et al., 2022:
-# https://doi.org/10.1002/lol2.10249
+# Publication: https://doi.org/10.1002/lol2.10249
 rule fetch_surface_metadata:
     input:
         "1_fetch/in/pull_date.txt",
