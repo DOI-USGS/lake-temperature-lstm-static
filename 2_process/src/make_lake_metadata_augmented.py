@@ -49,6 +49,9 @@ def add_elevation_from_EPQS(in_file, out_file):
         lambda row: elevation_query(
             row['centroid_lat'], row['centroid_lon']),
         axis=1)
+    destination_dir = os.path.dirname(out_file)
+    if not os.path.exists(destination_dir):
+        os.makedirs(destination_dir)
     lake_metadata.to_csv(out_file)
 
 
@@ -94,6 +97,9 @@ def add_elevation_from_surface_metadata(in_file, elevation_file, out_file):
             elevation = row['elevation']
         return elevation
     augmented['elevation'] = augmented.apply(fill_nan_from_EPQS, axis=1)
+    destination_dir = os.path.dirname(out_file)
+    if not os.path.exists(destination_dir):
+        os.makedirs(destination_dir)
     augmented.to_csv(out_file)
 
 
