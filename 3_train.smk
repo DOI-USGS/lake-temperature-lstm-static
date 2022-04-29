@@ -1,11 +1,17 @@
+import yaml
 
-configfile: "3_train/train_config.yaml"
+def train_config_path(run_id)
+    """
+    Get the path to a training config file, given the run_id and the model_id
+    """
+    return f"3_train/in/{run_id}.yaml"
+
 
 # Save config files to output folder
 rule save_config:
     input:
         process_config = "2_process/process_config.yaml",
-        train_config = "3_train/train_config.yaml"
+        train_config = "3_train/in/{run_id}.yaml"
     output:
         process_config = "3_train/out/{data_source}/{run_id}/process_config.yaml",
         train_config = "3_train/out/{data_source}/{run_id}/train_config.yaml"
@@ -15,6 +21,17 @@ rule save_config:
         cp {input.process_config} {output.process_config}
         cp {input.train_config} {output.train_config}
         """
+
+
+def read_train_config(run_id):
+    """
+    Read a training configuration yaml file and return a dictionary
+    """
+    config_path = train_config_path(run_id)
+    with open (config_path, "r") as stream:
+        config = yaml.safe_load(stream)
+    return config
+
 
 # Train a model and save weights and metadata
 # Example:
@@ -30,7 +47,8 @@ rule train_model:
         weights_filepath = "3_train/out/{data_source}/{run_id}/{model_id}_weights.pt",
         metadata_filepath = "3_train/out/{data_source}/{run_id}/{model_id}_metadata.npz"
     params:
-        config = config,
+        # Read in the run and model-specific config
+        config = lambda wildcards: read_train_config(wildcards.run_id),
         # Pass the run_id and model_id wildcards as params so that they can be
         # saved into metadata easily
         run_id = lambda wildcards: wildcards.run_id,
