@@ -3,6 +3,12 @@ import yaml
 def train_config_path(data_source, run_id):
     """
     Get the path to a training config file, given the run_id and the model_id
+
+    :param data_source: Source of training data, such as "mntoha".
+    :param run_id: ID of the current training run (experiment).
+
+    :returns: Path to training config file, relative to repository root directory
+
     """
     return f"3_train/in/{data_source}/{run_id}.yaml"
 
@@ -29,6 +35,12 @@ rule save_config:
 def read_train_config(data_source, run_id):
     """
     Read a training configuration yaml file and return a dictionary
+
+    :param data_source: Source of training data, such as "mntoha".
+    :param run_id: ID of the current training run (experiment).
+
+    :returns: Path to training config file, relative to repository root directory
+
     """
     config_path = train_config_path(data_source, run_id)
     with open (config_path, "r") as stream:
