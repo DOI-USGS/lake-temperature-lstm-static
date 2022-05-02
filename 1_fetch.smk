@@ -39,6 +39,19 @@ rule fetch_mntoha_dynamic:
         "1_fetch/src/sb_fetch.py"
 
 
+# Download metadata for lakes across CONUS compiled by Willard et al., 2022:
+# Publication: https://doi.org/10.1002/lol2.10249
+rule fetch_surface_metadata:
+    input:
+        "1_fetch/in/pull_date.txt",
+    output:
+        "1_fetch/out/surface/lake_metadata.csv"
+    params:
+        sb_id = "60341c3ed34eb12031172aa6"
+    script:
+        "1_fetch/src/sb_fetch.py"
+
+
 # Unzip files from a zipped archive.
 #
 # This is a checkpoint because otherwise Snakemake won't track unzipped files
