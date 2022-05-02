@@ -281,11 +281,11 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, device, verbose=False
     def verbose_print(*args):
         # Only print if verbose is true
         if verbose:
-            print(*args)
+            print(*args, flush=True)
 
     train_losses = []
     valid_losses = []
-    print('Epoch: train loss, validate loss')
+    print('Epoch: train loss, validate loss', flush=True)
     # Training loop
     for epoch in range(epochs):
         model.train()
@@ -315,7 +315,7 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, device, verbose=False
                 verbose_print(batch_loss, batch_count)
                 valid_loss += batch_loss * batch_count/n_valid
 
-        print(f'{epoch}: {train_loss}, {valid_loss}')
+        print(f'{epoch}: {datetime.now()} {train_loss}, {valid_loss}', flush=True)
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
     return train_losses, valid_losses
@@ -478,11 +478,11 @@ def main(npz_filepath, weights_filepath, metadata_filepath, run_id, model_id, co
         device = "cuda" 
     else:
         device = "cpu"
-    print(f"Using {device} device")
+    print(f"Using {device} device", flush=True)
 
-    print(f"Number of threads set by user: {torch.get_num_threads()}")
-    print(f"Number of GPUs: {torch.cuda.device_count()}")
-    print(f"Number of CPUs: {os.cpu_count()}")
+    print(f"Number of threads set by user: {torch.get_num_threads()}", flush=True)
+    print(f"Number of GPUs: {torch.cuda.device_count()}", flush=True)
+    print(f"Number of CPUs: {os.cpu_count()}", flush=True)
 
     # Create model
     model = get_model(n_depths,
@@ -505,7 +505,7 @@ def main(npz_filepath, weights_filepath, metadata_filepath, run_id, model_id, co
     train_start_time = str(datetime.now())
     train_losses, valid_losses = fit(config['max_epochs'], model, loss_func, optimizer, train_data_loader, valid_data_loader, device)
     train_end_time = str(datetime.now())
-    print('Finished Training')
+    print('Finished Training', flush=True)
 
     # Save model weights
     save_weights(model, weights_filepath, overwrite=True)
