@@ -192,12 +192,6 @@ def get_model(
     :returns: LSTM or EA-LSTM torch model
 
     """
-    if torch.cuda.is_available():
-        device = "cuda" 
-    else:
-        device = "cpu"
-    print(f"Using {device} device")
-
     model = Model(
         input_size_dyn=n_dynamic,
         input_size_stat=n_static,
@@ -206,7 +200,7 @@ def get_model(
         initial_forget_bias=initial_forget_bias,
         dropout=dropout,
         concat_static=concat_static
-    ).to(device)
+    )
 
     return model
 
@@ -257,7 +251,7 @@ def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
     return loss.item(), torch.sum(loss_idx).item()
 
 
-def fit(epochs, model, loss_func, opt, train_dl, valid_dl, verbose=False):
+def fit(epochs, model, loss_func, opt, train_dl, valid_dl, device, verbose=False):
     """
     Train the model, and compute training and validation losses for each epoch
     
@@ -269,6 +263,7 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, verbose=False):
     :param opt: Optimizer to use to update model parameters
     :param train_dl: PyTorch DataLoader with training data
     :param valid_dl: PyTorch DataLoader with validation data
+    :param device: Device that pytorch is running on (cpu or gpu)
     :param verbose: Print more messages during execution
         (Default value = False)
     :returns: Tuple of arrays of training and validation losses for each epoch
@@ -298,6 +293,8 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, verbose=False):
         # Data is ordered as [dynamic inputs, static inputs, labels]
         verbose_print('Train loss by batch')
         for x_d, x_s, y in train_dl:
+            # Transfer to device
+            x_d, x_s, y = x_d.to(device), x_s.to(device), y.to(device)
             batch_loss, batch_count = loss_batch(model, loss_func, x_d, x_s, y, opt)
 
             # Weight the batch loss based on number of observations in each batch
@@ -310,6 +307,8 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, verbose=False):
         verbose_print('Validation loss by batch')
         with torch.no_grad():
             for x_d, x_s, y in valid_dl:
+                # Transfer to device
+                x_d, x_s, y = x_d.to(device), x_s.to(device), y.to(device)
                 batch_loss, batch_count = loss_batch(model, loss_func, x_d, x_s, y)
 
                 # Weight the batch loss based on number of observations in each batch
@@ -475,6 +474,16 @@ def main(npz_filepath, weights_filepath, metadata_filepath, run_id, model_id, co
     n_dynamic = len(config['dynamic_features_use'])
     n_static = len(config['static_features_use'])
 
+    if torch.cuda.is_available():
+        device = "cuda" 
+    else:
+        device = "cpu"
+    print(f"Using {device} device")
+
+    print(f"Number of threads set by user: {torch.get_num_threads()}")
+    print(f"Number of GPUs: {torch.cuda.device_count()}")
+    print(f"Number of CPUs: {os.cpu_count()}")
+
     # Create model
     model = get_model(n_depths,
                       n_dynamic,
@@ -482,7 +491,7 @@ def main(npz_filepath, weights_filepath, metadata_filepath, run_id, model_id, co
                       config['hidden_size'],
                       config['initial_forget_bias'],
                       config['dropout'],
-                      config['concat_static'])
+                      config['concat_static']).to(device)
 
     # Create optimizer
     optimizer = Adam(model.parameters(), lr=config['learning_rate'])
@@ -494,7 +503,7 @@ def main(npz_filepath, weights_filepath, metadata_filepath, run_id, model_id, co
 
     # Training loop
     train_start_time = str(datetime.now())
-    train_losses, valid_losses = fit(config['max_epochs'], model, loss_func, optimizer, train_data_loader, valid_data_loader)
+    train_losses, valid_losses = fit(config['max_epochs'], model, loss_func, optimizer, train_data_loader, valid_data_loader, device)
     train_end_time = str(datetime.now())
     print('Finished Training')
 
