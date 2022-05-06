@@ -1,26 +1,11 @@
 import yaml
 
-def train_config_path(data_source, run_id):
-    """
-    Get the path to a training config file, given the run_id and the model_id
-
-    :param data_source: Source of training data, such as "mntoha".
-    :param run_id: ID of the current training run (experiment).
-
-    :returns: Path to training config file, relative to repository root directory
-
-    """
-    return f"3_train/in/{data_source}/{run_id}.yaml"
-
-
 # Save config files to output folder
 rule save_config:
     input:
         process_config = "2_process/process_config.yaml",
-        train_config = lambda wildcards: train_config_path(
-            data_source=wildcards.data_source,
-            run_id=wildcards.run_id
-        )
+        # location of training config depends on data_source and run_id
+        train_config = "3_train/in/{data_source}/{run_id}.yaml"
     output:
         process_config = "3_train/out/{data_source}/{run_id}/{run_id}_process.yaml",
         train_config = "3_train/out/{data_source}/{run_id}/{run_id}_train.yaml"
@@ -42,7 +27,7 @@ def read_train_config(data_source, run_id):
     :returns: Path to training config file, relative to repository root directory
 
     """
-    config_path = train_config_path(data_source, run_id)
+    config_path = f"3_train/in/{data_source}/{run_id}.yaml"
     with open (config_path, "r") as stream:
         config = yaml.safe_load(stream)
     return config
