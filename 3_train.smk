@@ -24,7 +24,7 @@ def read_train_config(data_source, run_id):
     :param data_source: Source of training data, such as "mntoha".
     :param run_id: ID of the current training run (experiment).
 
-    :returns: Path to training config file, relative to repository root directory
+    :returns: Training config dictionary
 
     """
     config_path = f"3_train/in/{data_source}/{run_id}.yaml"
@@ -47,7 +47,7 @@ rule train_model:
         weights_filepath = "3_train/out/{data_source}/{run_id}/{model_id}_weights.pt",
         metadata_filepath = "3_train/out/{data_source}/{run_id}/{model_id}_metadata.npz"
     params:
-        # Read in the run and model-specific config
+        # Read in the run-specific config
         config = lambda wildcards: read_train_config(
             wildcards.data_source,
             wildcards.run_id
