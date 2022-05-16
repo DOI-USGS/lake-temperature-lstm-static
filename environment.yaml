@@ -6,12 +6,15 @@ channels:
 dependencies: 
   - pip
   - pytorch = 1.10.1
-  - torchvision = 0.11.2
-  - torchaudio = 0.10.1
+  - torchvision
+  - torchaudio
+  - cudatoolkit = 11.3
   - snakemake
   - pandas 
   - numpy
   - matplotlib
+  - scipy
+  - git
   - jupyterlab
   - ipykernel
   - pip:

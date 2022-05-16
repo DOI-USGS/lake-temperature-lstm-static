@@ -24,6 +24,8 @@
 *.patch
 *.pdf
 *.svg
+*.swp
+*.swo
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -160,12 +162,13 @@ dmypy.json
 .Rproj.user
 
 # Specific files and directories to exclude
-1_fetch/tmp
-1_fetch/out
-2_process/log
-2_process/tmp
-2_process/out
-3_train/out
+/1_fetch/tmp/
+/1_fetch/out/
+/2_process/log/
+/2_process/tmp/
+/2_process/out/
+/3_train/out/
+/log/
 
 # Specific files to include
 !/notebooks/Explore_MNTOHA_temperature_observations.html
