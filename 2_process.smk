@@ -60,6 +60,18 @@ rule interpolate_mntoha_obs_depths:
         "2_process/src/make_obs_interpolated.py"
 
 
+# Convert 7b_temp_merge/out/merged_temp_data_daily.feather to csv
+rule convert_model_prep_obs_to_csv:
+    input:
+        in_file="1_fetch/in/model_prep/temperature_observations/merged_temp_data_daily.feather"
+    output:
+        csv_file="2_process/tmp/model_prep/temperature_observations.csv"
+    params:
+        file_format="feather"
+    script:
+        "2_process/src/convert_to_csv.py"
+
+
 # Add elevation to MNTOHA lake metadata
 rule augment_mntoha_lake_metadata:
     input:
