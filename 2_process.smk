@@ -72,6 +72,18 @@ rule convert_model_prep_obs_to_csv:
         "2_process/src/convert_to_csv.py"
 
 
+# Add column of observation depths interpolated to nearest modeling mesh node
+rule interpolate_model_prep_obs_depths:
+    input:
+        "2_process/tmp/model_prep/temperature_observations.csv"
+    output:
+        "2_process/tmp/model_prep/temperature_observations_interpolated.csv"
+    params:
+        depths=config["depths"]
+    script:
+        "2_process/src/make_obs_interpolated.py"
+
+
 # Add elevation to MNTOHA lake metadata
 rule augment_mntoha_lake_metadata:
     input:
