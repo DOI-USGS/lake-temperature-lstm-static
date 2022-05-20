@@ -63,7 +63,7 @@ rule interpolate_mntoha_obs_depths:
 # Convert 7b_temp_merge/out/merged_temp_data_daily.feather to csv
 rule convert_model_prep_obs_to_csv:
     input:
-        in_file="1_fetch/in/model_prep/temperature_observations/merged_temp_data_daily.feather"
+        in_file="2_process/in/model_prep/temperature_observations/merged_temp_data_daily.feather"
     output:
         csv_file="2_process/tmp/model_prep/temperature_observations.csv"
     params:
@@ -94,6 +94,17 @@ rule augment_mntoha_lake_metadata:
     script:
         "2_process/src/make_lake_metadata_augmented.py"
 
+
+# Convert 8_viz/inout/lakes_summary.feather to csv
+rule convert_model_prep_metadata_to_csv:
+    input:
+        in_file="2_process/in/model_prep/metadata/lakes_summary.feather"
+    output:
+        csv_file="2_process/tmp/model_prep/lake_metadata.csv"
+    params:
+        file_format="feather"
+    script:
+        "2_process/src/convert_feather_to_csv.py"
 
 def dynamic_filenames(site_id, file_category):
     """
