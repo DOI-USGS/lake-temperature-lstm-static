@@ -12,6 +12,7 @@ dependencies:
   - snakemake
   - pandas 
   - pyarrow
+  - r-base
   - numpy
   - matplotlib
   - scipy

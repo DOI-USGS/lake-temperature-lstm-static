@@ -106,6 +106,17 @@ rule convert_model_prep_metadata_to_csv:
     script:
         "2_process/src/convert_feather_to_csv.py"
 
+
+# Convert 7_config_merge/out/nml_H_A_values.rds to csv
+rule convert_model_prep_HA_metadata_to_csv:
+    input:
+        in_file="2_process/in/model_prep/metadata/nml_H_A_values.rds"
+    output:
+        csv_file="2_process/tmp/model_prep/nml_metadata_hypso.csv"
+    script:
+        "2_process/src/convert_hypso_rds_to_csv.R"
+
+
 def dynamic_filenames(site_id, file_category):
     """
     Return the files that contain dynamic data that are needed to construct
