@@ -87,10 +87,13 @@ rule interpolate_model_prep_obs_depths:
 # Add elevation to MNTOHA lake metadata
 rule augment_mntoha_lake_metadata:
     input:
-        mntoha_metadata="1_fetch/out/lake_metadata.csv",
+        lake_metadata="1_fetch/out/lake_metadata.csv",
         surface_metadata="1_fetch/out/surface/lake_metadata.csv"
     output:
         augmented_metadata="2_process/tmp/mntoha/lake_metadata_augmented.csv"
+    params:
+        latitude_column_name="centroid_lat",
+        longitude_column_name="centroid_lon"
     script:
         "2_process/src/make_lake_metadata_augmented.py"
 
@@ -141,6 +144,20 @@ rule augment_model_prep_lake_metadata_with_area:
         area_column_out="area"
     script:
         "2_process/src/make_lake_metadata_augmented_model_prep.py"
+
+
+# Add elevation to model_prep lake metadata
+rule augment_model_prep_lake_metadata_with_elevation:
+    input:
+        lake_metadata="2_process/tmp/model_prep/lake_metadata_area.csv",
+        surface_metadata="1_fetch/out/surface/lake_metadata.csv"
+    output:
+        augmented_metadata="2_process/tmp/model_prep/lake_metadata_augmented.csv"
+    params:
+        latitude_column_name="latitude",
+        longitude_column_name="longitude"
+    script:
+        "2_process/src/make_lake_metadata_augmented.py"
 
 
 def dynamic_filenames(site_id, file_category):

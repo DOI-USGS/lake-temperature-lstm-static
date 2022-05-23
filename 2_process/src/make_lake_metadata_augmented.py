@@ -55,7 +55,7 @@ def add_elevation_from_EPQS(in_file, out_file):
     lake_metadata.to_csv(out_file)
 
 
-def add_elevation_from_surface_metadata(in_file, elevation_file, out_file):
+def add_elevation_from_surface_metadata(in_file, elevation_file, out_file, lat_col, lon_col):
     """
     Add "elevation" column to metadata file and save to new file.
     Use elevation data from surface metadata file from Willard et al., 2022
@@ -67,6 +67,8 @@ def add_elevation_from_surface_metadata(in_file, elevation_file, out_file):
         elevation data from
     :param out_file: Filename of csv to save metadata augmented with elevation
         to
+    :param lat_col: Name of column with latitudes
+    :param lon_col: Name of column with longitudes
 
     """
     lake_metadata = pd.read_csv(in_file)
@@ -92,10 +94,11 @@ def add_elevation_from_surface_metadata(in_file, elevation_file, out_file):
 
         """
         if pd.isna(row['elevation']):
-            elevation = elevation_query(row['centroid_lat'], row['centroid_lon'])  
+            elevation = elevation_query(row[lat_col], row[lon_col])  
         else:
             elevation = row['elevation']
         return elevation
+    print(f"Querying EPQS to fill in {pd.isna(augmented.elevation).sum()} missing elevations")
     augmented['elevation'] = augmented.apply(fill_nan_from_EPQS, axis=1)
     destination_dir = os.path.dirname(out_file)
     if not os.path.exists(destination_dir):
@@ -106,7 +109,9 @@ def add_elevation_from_surface_metadata(in_file, elevation_file, out_file):
 if __name__ == '__main__':
     # Use surface metadata for elevations instead of USGS EPQS
     add_elevation_from_surface_metadata(
-        snakemake.input.mntoha_metadata,
+        snakemake.input.lake_metadata,
         snakemake.input.surface_metadata,
-        snakemake.output.augmented_metadata
+        snakemake.output.augmented_metadata,
+        snakemake.params.latitude_column_name,
+        snakemake.params.longitude_column_name
     )
