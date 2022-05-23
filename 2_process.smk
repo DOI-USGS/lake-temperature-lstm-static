@@ -117,6 +117,16 @@ rule convert_model_prep_HA_metadata_to_csv:
         "2_process/src/convert_hypso_rds_to_csv.R"
 
 
+# Convert 7_config_merge/out/canonical_lakes_area.rds to csv
+rule convert_model_prep_area_to_csv:
+    input:
+        in_file="2_process/in/model_prep/metadata/canonical_lakes_area.rds"
+    output:
+        csv_file="2_process/tmp/model_prep/canonical_lakes_area.csv"
+    script:
+        "2_process/src/convert_rds_to_csv.R"
+
+
 def dynamic_filenames(site_id, file_category):
     """
     Return the files that contain dynamic data that are needed to construct
