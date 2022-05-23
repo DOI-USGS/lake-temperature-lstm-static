@@ -127,6 +127,22 @@ rule convert_model_prep_area_to_csv:
         "2_process/src/convert_rds_to_csv.R"
 
 
+# Add areas from 7_config_merge/out/canonical_lakes_areas.rds (elevation, area, and depth) to model-prep lake metadata
+rule augment_model_prep_lake_metadata_with_area:
+    input:
+        lake_metadata="2_process/tmp/model_prep/lake_metadata.csv",
+        area_metadata="2_process/tmp/model_prep/canonical_lakes_area.csv"
+    output:
+        augmented_metadata="2_process/tmp/model_prep/lake_metadata_area.csv"
+    params:
+        # Name of area column in input file
+        area_column_in="areas_m2",
+        # Name to give area column in output file
+        area_column_out="area"
+    script:
+        "2_process/src/make_lake_metadata_augmented_model_prep.py"
+
+
 def dynamic_filenames(site_id, file_category):
     """
     Return the files that contain dynamic data that are needed to construct
