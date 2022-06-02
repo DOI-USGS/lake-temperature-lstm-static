@@ -88,12 +88,13 @@ rule interpolate_model_prep_obs_depths:
 rule augment_mntoha_lake_metadata:
     input:
         lake_metadata="1_fetch/out/lake_metadata.csv",
-        surface_metadata="1_fetch/out/surface/lake_metadata.csv"
+        elevation_metadata="1_fetch/out/surface/lake_metadata.csv"
     output:
         augmented_metadata="2_process/tmp/mntoha/lake_metadata_augmented.csv"
     params:
         latitude_column_name="centroid_lat",
-        longitude_column_name="centroid_lon"
+        longitude_column_name="centroid_lon",
+        elevation_column_name="elevation_m"
     script:
         "2_process/src/make_lake_metadata_augmented.py"
 
@@ -150,12 +151,13 @@ rule augment_model_prep_lake_metadata_with_area:
 rule augment_model_prep_lake_metadata_with_elevation:
     input:
         lake_metadata="2_process/tmp/model_prep/lake_metadata_area.csv",
-        surface_metadata="1_fetch/out/surface/lake_metadata.csv"
+        elevation_metadata="1_fetch/out/surface/lake_metadata.csv"
     output:
         augmented_metadata="2_process/tmp/model_prep/lake_metadata_augmented.csv"
     params:
         latitude_column_name="latitude",
-        longitude_column_name="longitude"
+        longitude_column_name="longitude",
+        elevation_column_name="elevation_m"
     script:
         "2_process/src/make_lake_metadata_augmented.py"
 
