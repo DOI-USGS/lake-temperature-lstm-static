@@ -111,6 +111,18 @@ rule convert_model_prep_metadata_to_csv:
         "2_process/src/convert_feather_to_csv.py"
 
 
+# Convert 1_crosswalk_fetch/out/ned_centroid_elevations.feather to csv
+rule convert_model_prep_elevations_to_csv:
+    input:
+        in_file="2_process/in/model_prep/metadata/ned_centroid_elevations.feather"
+    output:
+        csv_file="2_process/tmp/model_prep/ned_centroid_elevations.csv"
+    params:
+        file_format="feather"
+    script:
+        "2_process/src/convert_feather_to_csv.py"
+
+
 # Convert 7_config_merge/out/nml_H_A_values.rds to csv
 rule convert_model_prep_HA_metadata_to_csv:
     input:
@@ -151,13 +163,14 @@ rule augment_model_prep_lake_metadata_with_area:
 rule augment_model_prep_lake_metadata_with_elevation:
     input:
         lake_metadata="2_process/tmp/model_prep/lake_metadata_area.csv",
-        elevation_metadata="1_fetch/out/surface/lake_metadata.csv"
+        # elevation_metadata="1_fetch/out/surface/lake_metadata.csv"
+        elevation_metadata="2_process/tmp/model_prep/ned_centroid_elevations.csv"
     output:
         augmented_metadata="2_process/tmp/model_prep/lake_metadata_augmented.csv"
     params:
         latitude_column_name="latitude",
         longitude_column_name="longitude",
-        elevation_column_name="elevation_m"
+        elevation_column_name="elevation"
     script:
         "2_process/src/make_lake_metadata_augmented.py"
 
