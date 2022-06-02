@@ -15,7 +15,7 @@ def add_area_to_metadata(in_file, area_file, out_file, area_column_in, area_colu
     destination_dir = os.path.dirname(out_file)
     if not os.path.exists(destination_dir):
         os.makedirs(destination_dir)
-    augmented.to_csv(out_file)
+    augmented.to_csv(out_file, index=False)
 
 
 if __name__ == '__main__':
