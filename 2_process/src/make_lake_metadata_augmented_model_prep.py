@@ -1,8 +1,20 @@
 import os
 import pandas as pd
 
-def add_area_to_metadata(in_file, area_file, out_file, area_column_in, area_column_out):
-    # Code smell: This function is very similar to 2_process/src/make_lake_metadata_augmented.add_elevation_from_surface_metadata
+def add_area_from_file(in_file, area_file, out_file, area_column_in, area_column_out):
+    """
+    Add column with lake surface areas to metadata and save to new file.
+    
+    Code smell: This function is similar to
+    2_process/src/make_lake_metadata_augmented.add_elevation_from_file
+
+    :param in_file: Filename of csv to read existing lake metadata from
+    :param area_file: Filename of csv file to read lake area data from
+    :param out_file: Filename of csv to save metadata augmented with area to
+    :param area_column_in: Name of column with areas in in_file
+    :param area_column_out: What to name column with areas in out_file
+
+    """
 
     lake_metadata = pd.read_csv(in_file)
     lake_areas = pd.read_csv(area_file)
@@ -20,7 +32,7 @@ def add_area_to_metadata(in_file, area_file, out_file, area_column_in, area_colu
 
 if __name__ == '__main__':
     # Add lake area to metadata
-    add_area_to_metadata(
+    add_area_from_file(
         snakemake.input.lake_metadata,
         snakemake.input.area_metadata,
         snakemake.output.augmented_metadata,

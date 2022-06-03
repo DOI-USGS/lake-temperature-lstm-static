@@ -35,7 +35,7 @@ def add_elevation_from_EPQS(in_file, out_file):
     """
     Add "elevation" column to metadata file and save to new file.
     Use the USGS Elevation Point Query Service.
-
+    
     Currently unused.
 
     :param in_file: Filename of csv to read existing lake metadata from
@@ -55,16 +55,13 @@ def add_elevation_from_EPQS(in_file, out_file):
     lake_metadata.to_csv(out_file)
 
 
-def add_elevation_from_surface_metadata(in_file, elevation_file, out_file, lat_col, lon_col, elevation_col):
+def add_elevation_from_file(in_file, elevation_file, out_file, lat_col, lon_col, elevation_col):
     """
-    Add "elevation" column to metadata file and save to new file.
-    Use elevation data from surface metadata file from Willard et al., 2022
-    Publication: https://doi.org/10.1002/lol2.10249
-    Data release: https://www.sciencebase.gov/catalog/item/60341c3ed34eb12031172aa6
+    Add "elevation" column to metadata file and save to new file. Use the
+    Elevation Point Query Service (EPQS) to fill in missing elevation values.
 
     :param in_file: Filename of csv to read existing lake metadata from
-    :param elevation_file: Filename of surface metadata csv file to read
-        elevation data from
+    :param elevation_file: Filename of csv file to read elevation data from
     :param out_file: Filename of csv to save metadata augmented with elevation
         to
     :param lat_col: Name of column with latitudes in in_file
@@ -87,7 +84,7 @@ def add_elevation_from_surface_metadata(in_file, elevation_file, out_file, lat_c
         """
         Fill a NaN value in the 'elevation' column with elevation from the
         USGS Elevation Point Query Service.
-
+        
         If the value of 'elevation' is not NaN, it is returned unchanged.
 
         :param row: One row of the Dataframe containing lake metadata
@@ -109,7 +106,7 @@ def add_elevation_from_surface_metadata(in_file, elevation_file, out_file, lat_c
 
 if __name__ == '__main__':
     # Use surface metadata for elevations instead of USGS EPQS
-    add_elevation_from_surface_metadata(
+    add_elevation_from_file(
         snakemake.input.lake_metadata,
         snakemake.input.elevation_metadata,
         snakemake.output.augmented_metadata,
