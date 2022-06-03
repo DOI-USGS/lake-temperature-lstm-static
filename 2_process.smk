@@ -66,10 +66,8 @@ rule convert_model_prep_obs_to_csv:
         in_file="2_process/in/model_prep/temperature_observations/merged_temp_data_daily.feather"
     output:
         csv_file="2_process/tmp/model_prep/temperature_observations.csv"
-    params:
-        file_format="feather"
     script:
-        "2_process/src/convert_to_csv.py"
+        "2_process/src/convert_feather_to_csv.py"
 
 
 # Add column of observation depths interpolated to nearest modeling mesh node
@@ -105,8 +103,6 @@ rule convert_model_prep_metadata_to_csv:
         in_file="2_process/in/model_prep/metadata/lakes_summary.feather"
     output:
         csv_file="2_process/tmp/model_prep/lake_metadata.csv"
-    params:
-        file_format="feather"
     script:
         "2_process/src/convert_feather_to_csv.py"
 
@@ -117,8 +113,6 @@ rule convert_model_prep_elevations_to_csv:
         in_file="2_process/in/model_prep/metadata/ned_centroid_elevations.feather"
     output:
         csv_file="2_process/tmp/model_prep/ned_centroid_elevations.csv"
-    params:
-        file_format="feather"
     script:
         "2_process/src/convert_feather_to_csv.py"
 
