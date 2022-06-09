@@ -94,7 +94,7 @@ rule augment_mntoha_lake_metadata:
         longitude_column_name="centroid_lon",
         elevation_column_name="elevation_m"
     script:
-        "2_process/src/make_lake_metadata_augmented.py"
+        "2_process/src/augment_lake_metadata_w_elevation.py"
 
 
 # Convert 8_viz/inout/lakes_summary.feather to csv
@@ -156,7 +156,7 @@ rule augment_model_prep_lake_metadata_with_elevation:
         longitude_column_name="longitude",
         elevation_column_name="elevation"
     script:
-        "2_process/src/make_lake_metadata_augmented.py"
+        "2_process/src/augment_lake_metadata_w_elevation.py"
 
 
 def dynamic_filenames(site_id, file_category):
