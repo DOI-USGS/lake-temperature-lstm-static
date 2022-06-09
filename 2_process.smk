@@ -127,6 +127,16 @@ rule convert_model_prep_area_to_csv:
         "2_process/src/convert_rds_to_csv.R"
 
 
+# Convert 7_config_merge/out/nml_Kw_values.rds to csv
+rule convert_model_prep_clarity_to_csv:
+    input:
+        in_file = "2_process/in/model_prep/metadata/nml_Kw_values.rds"
+    output:
+        csv_file = "2_process/tmp/model_prep/nml_Kw_values.csv"
+    script:
+        "2_process/src/convert_rds_to_csv.R"
+
+
 # Add areas from 7_config_merge/out/canonical_lakes_areas.rds to model-prep lake metadata
 rule augment_model_prep_lake_metadata_with_area:
     input:
@@ -139,6 +149,22 @@ rule augment_model_prep_lake_metadata_with_area:
         feature_column_in="areas_m2",
         # Name to give area column in output file
         feature_column_out="area"
+    script:
+        "2_process/src/augment_lake_metadata_w_feature.py"
+
+
+# Add clarity from 7_config_merge/out/nml_Kw_values.rds to model-prep lake metadata
+rule augment_model_prep_lake_metadata_with_clarity:
+    input:
+        lake_metadata="2_process/tmp/model_prep/lake_metadata_area.csv",
+        feature_metadata="2_process/tmp/model_prep/nml_Kw_values.csv"
+    output:
+        augmented_metadata="2_process/tmp/model_prep/lake_metadata_clarity.csv"
+    params:
+        # Name of clarity column in input file
+        feature_column_in="Kw",
+        # Name to give clarity column in output file
+        feature_column_out="Kw"
     script:
         "2_process/src/augment_lake_metadata_w_feature.py"
 
