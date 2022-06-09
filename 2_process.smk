@@ -159,16 +159,16 @@ rule augment_model_prep_lake_metadata_with_elevation:
         "2_process/src/augment_lake_metadata_w_elevation.py"
 
 
-def dynamic_filenames(site_id, file_category):
+def dynamic_filenames_mntoha(site_id, file_category):
     """
     Return the files that contain dynamic data that are needed to construct
-    sequences for a given lake.
+    sequences for a given MNTOHA lake.
 
     This function also triggers four checkpoints:
     1. fetch_mntoha_metadata to get lake_metadata.csv
     2. unzip_archive for this lake's drivers
     3. unzip_archive for this lake's clarity
-    3. unzip_archive for this lake's ice flags
+    4. unzip_archive for this lake's ice flags
 
     :param site_id: NHDHR lake ID
     :param file_category: Category of files, e.g., dynamic_mntoha. Used by
@@ -198,11 +198,11 @@ def dynamic_filenames(site_id, file_category):
 
 
 # Create .npy of input/output sequences for one lake to use for training and testing
-rule mntoha_lake_sequences:
+rule lake_sequences_mntoha:
     input:
         "2_process/tmp/mntoha/lake_metadata_augmented.csv",
         "2_process/tmp/mntoha/temperature_observations_interpolated.csv",
-        lambda wildcards: dynamic_filenames(wildcards.site_id, file_category='dynamic_mntoha')
+        lambda wildcards: dynamic_filenames_mntoha(wildcards.site_id, file_category='dynamic_mntoha')
     output:
         "2_process/out/mntoha_sequences/sequences_{site_id}.npy"
     params:
