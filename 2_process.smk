@@ -127,7 +127,7 @@ rule convert_model_prep_area_to_csv:
         "2_process/src/convert_rds_to_csv.R"
 
 
-# Add areas from 7_config_merge/out/canonical_lakes_areas.rds (elevation, area, and depth) to model-prep lake metadata
+# Add areas from 7_config_merge/out/canonical_lakes_areas.rds to model-prep lake metadata
 rule augment_model_prep_lake_metadata_with_area:
     input:
         lake_metadata="2_process/tmp/model_prep/lake_metadata.csv",
