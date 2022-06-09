@@ -11,6 +11,8 @@ dependencies:
   - cudatoolkit = 11.3
   - snakemake
   - pandas 
+  - pyarrow
+  - r-base
   - numpy
   - matplotlib
   - scipy

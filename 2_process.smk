@@ -60,15 +60,103 @@ rule interpolate_mntoha_obs_depths:
         "2_process/src/make_obs_interpolated.py"
 
 
+# Convert 7b_temp_merge/out/merged_temp_data_daily.feather to csv
+rule convert_model_prep_obs_to_csv:
+    input:
+        in_file="2_process/in/model_prep/temperature_observations/merged_temp_data_daily.feather"
+    output:
+        csv_file="2_process/tmp/model_prep/temperature_observations.csv"
+    script:
+        "2_process/src/convert_feather_to_csv.py"
+
+
+# Add column of observation depths interpolated to nearest modeling mesh node
+rule interpolate_model_prep_obs_depths:
+    input:
+        "2_process/tmp/model_prep/temperature_observations.csv"
+    output:
+        "2_process/tmp/model_prep/temperature_observations_interpolated.csv"
+    params:
+        depths=config["depths"]
+    script:
+        "2_process/src/make_obs_interpolated.py"
+
+
 # Add elevation to MNTOHA lake metadata
 rule augment_mntoha_lake_metadata:
     input:
-        mntoha_metadata="1_fetch/out/lake_metadata.csv",
-        surface_metadata="1_fetch/out/surface/lake_metadata.csv"
+        lake_metadata="1_fetch/out/lake_metadata.csv",
+        elevation_metadata="1_fetch/out/surface/lake_metadata.csv"
     output:
         augmented_metadata="2_process/tmp/mntoha/lake_metadata_augmented.csv"
+    params:
+        latitude_column_name="centroid_lat",
+        longitude_column_name="centroid_lon",
+        elevation_column_name="elevation_m"
     script:
-        "2_process/src/make_lake_metadata_augmented.py"
+        "2_process/src/augment_lake_metadata_w_elevation.py"
+
+
+# Convert 8_viz/inout/lakes_summary.feather to csv
+rule convert_model_prep_metadata_to_csv:
+    input:
+        in_file="2_process/in/model_prep/metadata/lakes_summary.feather"
+    output:
+        csv_file="2_process/tmp/model_prep/lake_metadata.csv"
+    script:
+        "2_process/src/convert_feather_to_csv.py"
+
+
+# Convert 1_crosswalk_fetch/out/ned_centroid_elevations.feather to csv
+rule convert_model_prep_elevations_to_csv:
+    input:
+        in_file="2_process/in/model_prep/metadata/ned_centroid_elevations.feather"
+    output:
+        csv_file="2_process/tmp/model_prep/ned_centroid_elevations.csv"
+    script:
+        "2_process/src/convert_feather_to_csv.py"
+
+
+# Convert 7_config_merge/out/canonical_lakes_area.rds to csv
+rule convert_model_prep_area_to_csv:
+    input:
+        in_file="2_process/in/model_prep/metadata/canonical_lakes_area.rds"
+    output:
+        csv_file="2_process/tmp/model_prep/canonical_lakes_area.csv"
+    script:
+        "2_process/src/convert_rds_to_csv.R"
+
+
+# Add areas from 7_config_merge/out/canonical_lakes_areas.rds to model-prep lake metadata
+rule augment_model_prep_lake_metadata_with_area:
+    input:
+        lake_metadata="2_process/tmp/model_prep/lake_metadata.csv",
+        feature_metadata="2_process/tmp/model_prep/canonical_lakes_area.csv"
+    output:
+        augmented_metadata="2_process/tmp/model_prep/lake_metadata_area.csv"
+    params:
+        # Name of area column in input file
+        feature_column_in="areas_m2",
+        # Name to give area column in output file
+        feature_column_out="area"
+    script:
+        "2_process/src/augment_lake_metadata_w_feature.py"
+
+
+# Add elevation to model_prep lake metadata
+rule augment_model_prep_lake_metadata_with_elevation:
+    input:
+        lake_metadata="2_process/tmp/model_prep/lake_metadata_area.csv",
+        # elevation_metadata="1_fetch/out/surface/lake_metadata.csv"
+        elevation_metadata="2_process/tmp/model_prep/ned_centroid_elevations.csv"
+    output:
+        augmented_metadata="2_process/tmp/model_prep/lake_metadata_augmented.csv"
+    params:
+        latitude_column_name="latitude",
+        longitude_column_name="longitude",
+        elevation_column_name="elevation"
+    script:
+        "2_process/src/augment_lake_metadata_w_elevation.py"
 
 
 def dynamic_filenames(site_id, file_category):
