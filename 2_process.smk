@@ -131,14 +131,14 @@ rule convert_model_prep_area_to_csv:
 rule augment_model_prep_lake_metadata_with_area:
     input:
         lake_metadata="2_process/tmp/model_prep/lake_metadata.csv",
-        area_metadata="2_process/tmp/model_prep/canonical_lakes_area.csv"
+        feature_metadata="2_process/tmp/model_prep/canonical_lakes_area.csv"
     output:
         augmented_metadata="2_process/tmp/model_prep/lake_metadata_area.csv"
     params:
         # Name of area column in input file
-        area_column_in="areas_m2",
+        feature_column_in="areas_m2",
         # Name to give area column in output file
-        area_column_out="area"
+        feature_column_out="area"
     script:
         "2_process/src/augment_lake_metadata_w_feature.py"
 
