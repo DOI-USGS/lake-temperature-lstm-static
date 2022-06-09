@@ -240,6 +240,37 @@ rule lake_sequences_mntoha:
         "2_process/src/lake_sequences_mntoha.py"
 
 
+# Convert 7_config_merge/out/nml_meteo_fl_values.rds to csv
+rule convert_model_prep_meteo_crosswalk_to_csv:
+    input:
+        in_file = "2_process/in/model_prep/metadata/nml_meteo_fl_values.rds"
+    output:
+        csv_file = "2_process/tmp/model_prep/nml_meteo_fl_values.csv"
+    script:
+        "2_process/src/convert_rds_to_csv.R"
+
+
+def dynamic_filenames_model_prep(site_id):
+    """
+    Return the file that contains dynamic driver data that are needed to construct
+    sequences for a given lake in the lake-temperature-model_prep footprint.
+
+    :param site_id: NHDHR lake ID
+    :returns: dynamic driver filename
+
+    """
+    # Location of driver data files
+    meteo_directory = "/caldera/projects/usgs/water/iidd/datasci/lake-temp/lake-temperature-process-models/1_prep/in/NLDAS_GLM_csvs"
+    # nml_meteo_fl_values.csv is used to determine dynamic files
+    meteo_crosswalk_file = "2_process/tmp/model_prep/nml_meteo_fl_values.csv"
+    meteo_crosswalk = pd.read_csv(meteo_crosswalk_file)
+    lake = meteo_crosswalk.loc[meteo_crosswalk['site_id']==site_id].iloc[0]
+    drivers_filename = lake['meteo_fl']
+    # dynamic filenames
+    drivers_file = os.path.join(meteo_directory, drivers_filename)
+    return drivers_file
+
+
 def get_lake_sequence_files(sequence_file_template, data_source):
     """
     List all lake sequence .npy files for training and testing.
