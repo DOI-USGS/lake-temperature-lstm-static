@@ -140,7 +140,7 @@ rule augment_model_prep_lake_metadata_with_area:
         # Name to give area column in output file
         area_column_out="area"
     script:
-        "2_process/src/make_lake_metadata_augmented_model_prep.py"
+        "2_process/src/augment_lake_metadata_w_feature.py"
 
 
 # Add elevation to model_prep lake metadata
