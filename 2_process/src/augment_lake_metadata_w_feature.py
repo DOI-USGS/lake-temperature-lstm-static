@@ -3,7 +3,7 @@ import pandas as pd
 
 def add_feature_from_file(in_file, feature_file, out_file, feature_column_in, feature_column_out):
     """
-    Add column with lake surface features to metadata and save to new file.
+    Add column with values of a new lake feature to metadata and save to new file.
     
     Code smell: This function is similar to
     2_process/src/make_lake_metadata_augmented.add_elevation_from_file
@@ -20,6 +20,8 @@ def add_feature_from_file(in_file, feature_file, out_file, feature_column_in, fe
     lake_features = pd.read_csv(feature_file)
     lake_features_only = lake_features.loc[:, ['site_id', feature_column_in]]
     # Add feature to metadata
+    # NOTE: The inner merge here means that only lakes that appear in both
+    # in_file and feature_file are kept
     augmented = pd.merge(lake_metadata, lake_features_only, how="inner", on='site_id')
     # Rename column to feature
     augmented = augmented.rename({feature_column_in: feature_column_out}, axis='columns')
