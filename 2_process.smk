@@ -271,6 +271,23 @@ def dynamic_filenames_model_prep(site_id):
     return drivers_file
 
 
+# Create .npy of input/output sequences for one lake to use for training and testing
+rule lake_sequences_model_prep:
+    input:
+        "2_process/tmp/model_prep/lake_metadata_augmented.csv",
+        "2_process/tmp/model_prep/temperature_observations_interpolated.csv",
+        lambda wildcards: dynamic_filenames_model_prep(wildcards.site_id)
+    output:
+        "2_process/out/model_prep/sequences/sequences_{site_id}.npy"
+    params:
+        temp_col = 'temp',
+        depth_col = 'interpolated_depth',
+        date_col = 'date',
+        config = config
+    script:
+        "2_process/src/lake_sequences_model_prep.py"
+
+
 def get_lake_sequence_files(sequence_file_template, data_source):
     """
     List all lake sequence .npy files for training and testing.
