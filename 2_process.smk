@@ -204,7 +204,7 @@ rule lake_sequences_mntoha:
         "2_process/tmp/mntoha/temperature_observations_interpolated.csv",
         lambda wildcards: dynamic_filenames_mntoha(wildcards.site_id, file_category='dynamic_mntoha')
     output:
-        "2_process/out/mntoha_sequences/sequences_{site_id}.npy"
+        "2_process/out/mntoha/sequences/sequences_{site_id}.npy"
     params:
         temp_col = 'temp',
         depth_col = 'interpolated_depth',
@@ -269,11 +269,11 @@ def save_sequences_summary(lake_sequence_files_input, summary_file):
 rule process_sequences:
     input:
         lambda wildcards: get_lake_sequence_files(
-            '2_process/out/{}_sequences/sequences_{}.npy',
+            '2_process/out/{}/sequences/sequences_{}.npy',
             wildcards.data_source
         )
     output:
-        "2_process/out/{data_source}_sequences/{data_source}_sequences_summary.csv"
+        "2_process/out/{data_source}/sequences/{data_source}_sequences_summary.csv"
     run:
         save_sequences_summary(input, output[0])
 
@@ -282,10 +282,10 @@ rule process_sequences:
 rule create_training_data:
     input:
         lambda wildcards: get_lake_sequence_files(
-            '2_process/out/{}_sequences/sequences_{}.npy',
+            '2_process/out/{}/sequences/sequences_{}.npy',
             wildcards.data_source
         ),
-        sequences_summary_file = "2_process/out/{data_source}_sequences/{data_source}_sequences_summary.csv"
+        sequences_summary_file = "2_process/out/{data_source}/sequences/{data_source}_sequences_summary.csv"
     output:
         train_file = "2_process/out/{data_source}/train.npz",
         test_file = "2_process/out/{data_source}/test.npz",
