@@ -226,18 +226,22 @@ def dynamic_filenames_mntoha(site_id, file_category):
 # Create .npy of input/output sequences for one lake to use for training and testing
 rule lake_sequences_mntoha:
     input:
-        "2_process/tmp/mntoha/lake_metadata_augmented.csv",
-        "2_process/tmp/mntoha/temperature_observations_interpolated.csv",
-        lambda wildcards: dynamic_filenames_mntoha(wildcards.site_id, file_category='dynamic_mntoha')
+        lake_metadata_file = "2_process/tmp/mntoha/lake_metadata_augmented.csv",
+        observations_file = "2_process/tmp/mntoha/temperature_observations_interpolated.csv",
+        dynamic_files = lambda wildcards: dynamic_filenames_mntoha(wildcards.site_id, file_category='dynamic_mntoha')
     output:
-        "2_process/out/mntoha/sequences/sequences_{site_id}.npy"
+        site_sequences_file = "2_process/out/mntoha/sequences/sequences_{site_id}.npy"
     params:
         temp_col = 'temp',
         depth_col = 'interpolated_depth',
         date_col = 'date',
+        area_col = 'area',
+        lon_col = 'centroid_lon',
+        lat_col = 'centroid_lat',
+        elevation_col = 'elevation',
         config = config
     script:
-        "2_process/src/lake_sequences_mntoha.py"
+        "2_process/src/lake_sequences.py"
 
 
 # Convert 7_config_merge/out/nml_meteo_fl_values.rds to csv
@@ -252,15 +256,18 @@ rule convert_model_prep_meteo_crosswalk_to_csv:
 
 def dynamic_filenames_model_prep(site_id):
     """
-    Return the file that contains dynamic driver data that are needed to construct
-    sequences for a given lake in the lake-temperature-model_prep footprint.
+    Return the file that contains dynamic driver data that are needed to
+    construct sequences for a given lake in the lake-temperature-model_prep
+    footprint. Since only dynamic drivers are available for model-prep data,
+    not time-varying clarity and ice flags, return a list with only one
+    element.
 
     :param site_id: NHDHR lake ID
-    :returns: dynamic driver filename
+    :returns: List of dynamic filename (One element because there are no clarity or ice flags files)
 
     """
     # Location of driver data files
-    meteo_directory = "/caldera/projects/usgs/water/iidd/datasci/lake-temp/lake-temperature-process-models/1_prep/in/NLDAS_GLM_csvs"
+    meteo_directory = config["meteo_directory"]
     # nml_meteo_fl_values.csv is used to determine dynamic files
     meteo_crosswalk_file = "2_process/tmp/model_prep/nml_meteo_fl_values.csv"
     meteo_crosswalk = pd.read_csv(meteo_crosswalk_file)
@@ -268,24 +275,28 @@ def dynamic_filenames_model_prep(site_id):
     drivers_filename = lake['meteo_fl']
     # dynamic filenames
     drivers_file = os.path.join(meteo_directory, drivers_filename)
-    return drivers_file
+    return [drivers_file]
 
 
 # Create .npy of input/output sequences for one lake to use for training and testing
 rule lake_sequences_model_prep:
     input:
-        "2_process/tmp/model_prep/lake_metadata_augmented.csv",
-        "2_process/tmp/model_prep/temperature_observations_interpolated.csv",
-        lambda wildcards: dynamic_filenames_model_prep(wildcards.site_id)
+        lake_metadata_file = "2_process/tmp/model_prep/lake_metadata_augmented.csv",
+        observations_file = "2_process/tmp/model_prep/temperature_observations_interpolated.csv",
+        dynamic_files = lambda wildcards: dynamic_filenames_model_prep(wildcards.site_id)
     output:
-        "2_process/out/model_prep/sequences/sequences_{site_id}.npy"
+        site_sequences_file = "2_process/out/model_prep/sequences/sequences_{site_id}.npy"
     params:
         temp_col = 'temp',
         depth_col = 'interpolated_depth',
         date_col = 'date',
+        area_col = 'area',
+        lon_col = 'longitude',
+        lat_col = 'latitude',
+        elevation_col = 'elevation',
         config = config
     script:
-        "2_process/src/lake_sequences_model_prep.py"
+        "2_process/src/lake_sequences.py"
 
 
 def get_lake_sequence_files(sequence_file_template, data_source):
