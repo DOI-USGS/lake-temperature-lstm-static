@@ -271,7 +271,10 @@ def dynamic_filenames_model_prep(site_id):
     # nml_meteo_fl_values.csv is used to determine dynamic files
     meteo_crosswalk_file = "2_process/tmp/model_prep/nml_meteo_fl_values.csv"
     meteo_crosswalk = pd.read_csv(meteo_crosswalk_file)
-    lake = meteo_crosswalk.loc[meteo_crosswalk['site_id']==site_id].iloc[0]
+    meteo_matches = meteo_crosswalk.loc[meteo_crosswalk['site_id']==site_id]
+    if len(meteo_matches) == 0:
+        raise FileNotFoundError(f'No dynamic drivers found for {site_id}')
+    lake = meteo_matches.iloc[0]
     drivers_filename = lake['meteo_fl']
     # dynamic filenames
     drivers_file = os.path.join(meteo_directory, drivers_filename)
