@@ -317,6 +317,8 @@ def get_lake_sequence_files(sequence_file_template, data_source):
     # Needed because lake metadata is used to determine lake_sequence_files
     if data_source == 'mntoha':
         lake_metadata_file = checkpoints.fetch_mntoha_metadata.get().output[0]
+    elif data_source == 'model_prep':
+        lake_metadata_file = "2_process/tmp/model_prep/lake_metadata_augmented.csv"
     else:
         raise ValueError(f'Data source {data_source} not recognized')
     lake_metadata = pd.read_csv(lake_metadata_file)
