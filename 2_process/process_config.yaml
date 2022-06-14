@@ -1,6 +1,5 @@
 # Driver files
-# meteo_directory: "/caldera/projects/usgs/water/iidd/datasci/lake-temp/lake-temperature-process-models/1_prep/in/NLDAS_GLM_csvs"
-meteo_directory: "/Users/wmcaliley/tmp/model-prep/NLDAS_GLM_csvs"
+meteo_directory: "/caldera/projects/usgs/water/iidd/datasci/lake-temp/lake-temperature-process-models/1_prep/in/NLDAS_GLM_csvs"
 
 # LSTM params
 sequence_length: 400
