@@ -313,20 +313,29 @@ def get_lake_sequence_files(sequence_file_template, data_source):
     :returns: List of lake training/testing sequence files.
 
     """
-    # Make this function dependent on lake metadata
-    # Needed because lake metadata is used to determine lake_sequence_files
     if data_source == 'mntoha':
+        # Make this function dependent on lake metadata
+        # Needed because lake metadata is used to determine lake_sequence_files
         lake_metadata_file = checkpoints.fetch_mntoha_metadata.get().output[0]
+        lake_metadata = pd.read_csv(lake_metadata_file)
+        site_ids = list(lake_metadata.site_id)
     elif data_source == 'model_prep':
         lake_metadata_file = "2_process/tmp/model_prep/lake_metadata_augmented.csv"
+        meteo_crosswalk_file = "2_process/tmp/model_prep/nml_meteo_fl_values.csv"
+        lake_metadata = pd.read_csv(lake_metadata_file)
+        meteo_crosswalk = pd.read_csv(meteo_crosswalk_file)
+        # Only use sites that are in both lake_metadata and meteo_crosswalk
+        # Use Python's set intersection to get a list of such sites
+        site_ids_metadata = lake_metadata.site_id
+        site_ids_crosswalk = meteo_crosswalk.site_id
+        site_ids = list(set(site_ids_metadata) & set(site_ids_crosswalk))
     else:
         raise ValueError(f'Data source {data_source} not recognized')
-    lake_metadata = pd.read_csv(lake_metadata_file)
     # Fill in the two replacement fields in sequence_file_template with the
     # data source and the lake site ID, respectively.
     lake_sequence_files = [
         sequence_file_template.format(data_source, site_id) 
-        for site_id in lake_metadata.site_id
+        for site_id in site_ids
     ]
     return lake_sequence_files
 
