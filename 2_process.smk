@@ -208,7 +208,9 @@ rule augment_model_prep_lake_metadata_with_clarity:
 
 
 # Add elevation to model_prep lake metadata
-rule augment_model_prep_lake_metadata_with_elevation:
+# This is a checkpoint because lake_metadata_augmented.csv is needed to
+# determine the lake_sequence file names later.
+checkpoint augment_model_prep_lake_metadata_with_elevation:
     input:
         lake_metadata="2_process/tmp/model_prep/lake_metadata_area.csv",
         # elevation_metadata="1_fetch/out/surface/lake_metadata.csv"
@@ -292,7 +294,9 @@ rule lake_sequences_mntoha:
 ##### model-prep #####
 
 # Convert 7_config_merge/out/nml_meteo_fl_values.rds to csv
-rule convert_model_prep_meteo_crosswalk_to_csv:
+# This is a checkpoint because nml_meteo_fl_values.csv is needed to
+# determine driver files, and the lake_sequence file names later.
+checkpoint convert_model_prep_meteo_crosswalk_to_csv:
     input:
         in_file = "2_process/in/model_prep/metadata/nml_meteo_fl_values.rds"
     output:
@@ -315,8 +319,10 @@ def dynamic_filenames_model_prep(site_id):
     """
     # Location of driver data files
     meteo_directory = config["meteo_directory"]
-    # nml_meteo_fl_values.csv is used to determine dynamic files
-    meteo_crosswalk_file = "2_process/tmp/model_prep/nml_meteo_fl_values.csv"
+    # Make this function dependent on the meteo crosswalk because the crosswalk
+    # is used to determine driver filenames
+    # meteo_crosswalk_file = "2_process/tmp/model_prep/nml_meteo_fl_values.csv"
+    meteo_crosswalk_file = checkpoints.convert_model_prep_meteo_crosswalk_to_csv.get().output.csv_file
     meteo_crosswalk = pd.read_csv(meteo_crosswalk_file)
     meteo_matches = meteo_crosswalk.loc[meteo_crosswalk['site_id']==site_id]
     if len(meteo_matches) == 0:
@@ -371,12 +377,23 @@ def get_lake_sequence_files(sequence_file_template, data_source):
     if data_source == 'mntoha':
         # Make this function dependent on lake metadata
         # Needed because lake metadata is used to determine lake_sequence_files
+        # lake_metadata_file = "1_fetch/out/lake_metadata.csv"
         lake_metadata_file = checkpoints.fetch_mntoha_metadata.get().output[0]
         lake_metadata = pd.read_csv(lake_metadata_file)
         site_ids = list(lake_metadata.site_id)
     elif data_source == 'model_prep':
-        lake_metadata_file = "2_process/tmp/model_prep/lake_metadata_augmented.csv"
-        meteo_crosswalk_file = "2_process/tmp/model_prep/nml_meteo_fl_values.csv"
+        # Make this function dependent on lake metadata and the meteo crosswalk
+        # because both are used to determine lake_sequence_files
+        # lake_metadata_file = "2_process/tmp/model_prep/lake_metadata_augmented.csv"
+        lake_metadata_file = (
+            checkpoints.augment_model_prep_lake_metadata_with_elevation
+            .get().output.augmented_metadata
+        )
+        # meteo_crosswalk_file = "2_process/tmp/model_prep/nml_meteo_fl_values.csv"
+        meteo_crosswalk_file = (
+            checkpoints.convert_model_prep_meteo_crosswalk_to_csv
+            .get().output.csv_file
+        )
         lake_metadata = pd.read_csv(lake_metadata_file)
         meteo_crosswalk = pd.read_csv(meteo_crosswalk_file)
         # Only use sites that are in both lake_metadata and meteo_crosswalk
