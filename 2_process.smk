@@ -5,6 +5,33 @@ import pandas as pd
 configfile: "2_process/process_config.yaml"
 
 
+"""
+This snakefile processes the data, preparing training, validation, and test
+sets for neural network training. Two data sources are used to form two
+distinct training sets: the MNTOHA data release and the
+lake-temperature-model-prep pipeline. Some rules and functions apply to only
+one data source, while some apply to both. If a rule or function has mntoha or
+model_prep in its name, then you can be sure it only applies to that data
+source. 
+
+This snakefile is organized into four sections:
+
+1. Interpolate observations to specified depths
+2. Prepare lake metadata
+3. Prepare fixed length sequences for the neural network
+4. Summarize and group sequences into training, validation, and testing sets
+
+Sections 1-3 are sub-divided by data source.
+"""
+
+
+#####################################################
+#  1. Interpolate observations to specified depths  #
+#####################################################
+
+
+##### MNTOHA #####
+
 def trigger_unzip_archive(file_category, archive_name):
     """
     Trigger checkpoint to unzip zipped directory
@@ -60,6 +87,8 @@ rule interpolate_mntoha_obs_depths:
         "2_process/src/make_obs_interpolated.py"
 
 
+##### model-prep #####
+
 # Convert 7b_temp_merge/out/merged_temp_data_daily.feather to csv
 rule convert_model_prep_obs_to_csv:
     input:
@@ -82,6 +111,13 @@ rule interpolate_model_prep_obs_depths:
         "2_process/src/make_obs_interpolated.py"
 
 
+##############################
+#  2. Prepare lake metadata  #
+##############################
+
+
+##### MNTOHA #####
+
 # Add elevation to MNTOHA lake metadata
 rule augment_mntoha_lake_metadata:
     input:
@@ -96,6 +132,8 @@ rule augment_mntoha_lake_metadata:
     script:
         "2_process/src/augment_lake_metadata_w_elevation.py"
 
+
+##### model-prep #####
 
 # Convert 8_viz/inout/lakes_summary.feather to csv
 rule convert_model_prep_metadata_to_csv:
@@ -185,6 +223,13 @@ rule augment_model_prep_lake_metadata_with_elevation:
         "2_process/src/augment_lake_metadata_w_elevation.py"
 
 
+##############################################################
+#  3. Prepare fixed length sequences for the neural network  #
+##############################################################
+
+
+##### MNTOHA #####
+
 def dynamic_filenames_mntoha(site_id, file_category):
     """
     Return the files that contain dynamic data that are needed to construct
@@ -244,6 +289,8 @@ rule lake_sequences_mntoha:
         "2_process/src/lake_sequences.py"
 
 
+##### model-prep #####
+
 # Convert 7_config_merge/out/nml_meteo_fl_values.rds to csv
 rule convert_model_prep_meteo_crosswalk_to_csv:
     input:
@@ -300,6 +347,11 @@ rule lake_sequences_model_prep:
         config = config
     script:
         "2_process/src/lake_sequences.py"
+
+
+##################################################################################
+#  4. Summarize and group sequences into training, validation, and testing sets  #
+##################################################################################
 
 
 def get_lake_sequence_files(sequence_file_template, data_source):
