@@ -65,21 +65,23 @@ def read_sequences(lake_sequence_files, n_depths):
     :returns: numpy array of sequences
 
     """
-    # sequences = np.concatenate([np.load(lsfn)['lake_sequences'] for lsfn in lake_sequence_files])
-    # start_dates = np.concatenate([np.load(lsfn)['start_dates'] for lsfn in lake_sequence_files])
-    # site_ids = np.concatenate([np.array([])])
-
     sequences_list = []
     start_dates_list = []
     site_ids_list = []
     for lake_sequence_file in lake_sequence_files:
         npz = np.load(lake_sequence_file)
+        # 1. Lake sequence data
         sequences_list.append(npz['lake_sequences'])
-        start_dates_list.append(npz['start_dates'])
+        # 2. Sequence start dates
+        lake_start_dates = npz['start_dates']
+        # Convert from float32 days to np.datetime64
+        lake_start_dates64 = [np.datetime64(int(lsd), 'D') for lsd in lake_start_dates]
+        start_dates_list.append(lake_start_dates64)
+        # 3. Lake site ID
         lake_sequence_filename = os.path.basename(lake_sequence_file)
-        # format of each filename is "sequences_{site_id}.npz"
+        # Format of each filename is "sequences_{site_id}.npz"
         site_id = lake_sequence_filename[10:-4]
-        # shape of sequences is (# sequences, sequence_length, # depths + # input features)
+        # Shape of sequences is (# sequences, sequence_length, # depths + # input features)
         num_sequences = npz['lake_sequences'].shape[0]
         # Repeat site ID once for every sequence in file
         site_ids_list.append([site_id]*num_sequences)
@@ -88,9 +90,9 @@ def read_sequences(lake_sequence_files, n_depths):
     start_dates = np.concatenate(start_dates_list)
     site_ids = np.concatenate(site_ids_list)
 
-    # remove input features with nans
-    # shape of sequences is (# sequences, sequence_length, # depths + # input features)
-    # slice from n_depths forward to index input features only
+    # Remove input features with nans
+    # Shape of sequences is (# sequences, sequence_length, # depths + # input features)
+    # Slice from n_depths forward to index input features only
     nan_inputs = np.any(np.isnan(sequences[:, :, n_depths:]), axis=(1,2))
     no_nan_inputs = np.invert(nan_inputs)
     return (sequences[no_nan_inputs, :, :],
