@@ -456,8 +456,9 @@ rule create_training_data:
         sequences_summary_file = "2_process/out/{data_source}/sequences/{data_source}_sequences_summary.csv"
     output:
         train_file = "2_process/out/{data_source}/train.npz",
+        valid_file = "2_process/out/{data_source}/valid.npz",
         test_file = "2_process/out/{data_source}/test.npz",
-        train_test_summary_file = "2_process/out/{data_source}/train_test_summary.csv"
+        split_summary_file = "2_process/out/{data_source}/split_summary.csv"
     params:
         process_config = config
     script:
