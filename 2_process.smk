@@ -334,14 +334,14 @@ def dynamic_filenames_model_prep(site_id):
     return [drivers_file]
 
 
-# Create .npy of input/output sequences for one lake to use for training and testing
+# Create .npz of input/output sequences for one lake to use for training and testing
 rule lake_sequences_model_prep:
     input:
         lake_metadata_file = "2_process/tmp/model_prep/lake_metadata_augmented.csv",
         observations_file = "2_process/tmp/model_prep/temperature_observations_interpolated.csv",
         dynamic_files = lambda wildcards: dynamic_filenames_model_prep(wildcards.site_id)
     output:
-        site_sequences_file = "2_process/out/model_prep/sequences/sequences_{site_id}.npy"
+        site_sequences_file = "2_process/out/model_prep/sequences/sequences_{site_id}.npz"
     params:
         temp_col = 'temp',
         depth_col = 'interpolated_depth',

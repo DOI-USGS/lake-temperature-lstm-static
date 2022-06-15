@@ -83,7 +83,7 @@ def assemble_lake_data(site_id,
     """
     Assemble features and observed temperatures from one lake into equal-length
     sequences for training/testing. Features are meteorological drivers,
-    clarity, ice flags, and static lake attributes.
+    clarity, ice flags, and static lake attributes. Also provide the start date of each sequence.
 
     :param site_id: ID of lake to process
     :param metadata_augmented_file: Lake metadata file, augmented with elevation
@@ -100,8 +100,9 @@ def assemble_lake_data(site_id,
     :param lat_col: Name of column in metadata_augmented_file with latitudes.
     :param elevation_col: Name of column in metadata_augmented_file with lake elevations.
     :param config: Snakemake config for 2_process
-    :returns: Numpy array of sequences with shape (# sequences,
-        sequence_length, # depths + # features)
+    :returns: Tuple of two numpy arrays. The first array holds sequences with
+        shape (# sequences, sequence_length, # depths + # features). The second
+        array has start dates for each sequence as float in units of days
 
     """
     # Settings for forming LSTM training sequences
@@ -120,7 +121,8 @@ def assemble_lake_data(site_id,
     lake_obs_interpolated = obs_interpolated[obs_interpolated.site_id==site_id].copy()
     # Only form sequences if there are any observations in this lake
     if len(lake_obs_interpolated) == 0:
-        lake_sequences = np.empty((0))
+        lake_sequences = np.empty((0), dtype=np.float32)
+        start_dates = np.empty((0), dtype=np.float32)
     else:
         # Read metadata with elevation
         lake_metadata_augmented = pd.read_csv(metadata_augmented_file)
@@ -172,6 +174,10 @@ def assemble_lake_data(site_id,
         # Now obs_full is one long timeseries with depth-specific temperatures,
         # drivers, clarity, ice_flags, and attributes as columns
 
+        # Finally, save dates as a column so that sequences dates are preserved
+        # Convert to float32 in units of days
+        obs_full['date'] = obs_full.index.to_numpy('datetime64[D]').astype(np.float32)
+
         # Split into sequences
 
         # Let's make some rules for the sequences to save to disk:
@@ -185,7 +191,7 @@ def assemble_lake_data(site_id,
         obs_full_array = obs_full.to_numpy(dtype=np.float32)
         # The shape of obs_full_array is (len(date range), # depths + # features)
         # The first `len(depths)` elements in the second dimension are temperature observations.
-        # Features are drivers, clarity, ice flags, and static attributes, in that order.
+        # Features are drivers, clarity, ice flags, static attributes, and dates, in that order.
 
         # Create a strided view into obs_full_array
         # This creates a numpy object with sequences of length sequence_length
@@ -213,7 +219,13 @@ def assemble_lake_data(site_id,
         if (obs_full_array.shape[0] - sequence_length) % sequence_offset != 0:
             lake_sequences = np.concatenate((lake_sequences, np.array([obs_full_array[-sequence_length:, :]])), axis=0)
 
-    return lake_sequences
+        # Extract the start date of each sequence
+        start_dates = lake_sequences[:, 0, -1]
+        # Remove the dates column (last feature)
+        # We can reconstruct all other dates from the start date, so this saves memory
+        lake_sequences = lake_sequences[:, :, :-1]
+
+    return lake_sequences, start_dates
 
 
 def main(site_id,
@@ -234,7 +246,7 @@ def main(site_id,
     Save those data to a numpy file
 
     :param site_id: site_id of lake to process
-    :param out_file: Filename of npy file to save
+    :param out_file: Filename of npz file to save
     :param metadata_augmented_file: lake metadata file, augmented with elevation
     :param obs_interpolated_file: temperature observations file, interpolated
         to LSTM depths
@@ -262,7 +274,7 @@ def main(site_id,
     if len(dynamic_files) > 2:
         ice_flags_file = dynamic_files[2]
 
-    lake_sequences = assemble_lake_data(
+    lake_sequences, start_dates = assemble_lake_data(
         site_id,
         metadata_augmented_file,
         obs_interpolated_file,
@@ -278,12 +290,12 @@ def main(site_id,
         elevation_col,
         config
     )
-    np.save(out_file, lake_sequences, allow_pickle=True)
+    np.savez(out_file, lake_sequences=lake_sequences, start_dates=start_dates)
 
 
 if __name__ == '__main__':
     main(snakemake.wildcards['site_id'],
-         snakemake.output.site_sequences_file, # npy file
+         snakemake.output.site_sequences_file, # npz file
          snakemake.input.lake_metadata_file, # metadata_augmented_file
          snakemake.input.observations_file, # obs_interpolated_file
          snakemake.input.dynamic_files, # drivers_file[, clarity_file, ice_flags_file]
