@@ -450,7 +450,7 @@ rule process_sequences:
 rule create_training_data:
     input:
         lambda wildcards: get_lake_sequence_files(
-            '2_process/out/{}/sequences/sequences_{}.npy',
+            '2_process/out/{}/sequences/sequences_{}.npz',
             wildcards.data_source
         ),
         sequences_summary_file = "2_process/out/{data_source}/sequences/{data_source}_sequences_summary.csv"
