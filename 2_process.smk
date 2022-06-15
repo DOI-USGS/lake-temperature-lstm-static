@@ -424,7 +424,7 @@ def save_sequences_summary(lake_sequence_files_input, summary_file):
     sequence_counts = []
     for sequences_file in lake_sequence_files_input:
         # Sequence files have shape (# sequences, sequence length, # depths + # features)
-        num_sequences = np.load(sequences_file).shape[0] 
+        num_sequences = np.load(sequences_file)['lake_sequences'].shape[0] 
         sequence_counts.append(num_sequences)
     df_counts = pd.DataFrame(data={
         'sequences_file': lake_sequence_files_input,
@@ -437,7 +437,7 @@ def save_sequences_summary(lake_sequence_files_input, summary_file):
 rule process_sequences:
     input:
         lambda wildcards: get_lake_sequence_files(
-            '2_process/out/{}/sequences/sequences_{}.npy',
+            '2_process/out/{}/sequences/sequences_{}.npz',
             wildcards.data_source
         )
     output:
