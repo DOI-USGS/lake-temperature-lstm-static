@@ -19,9 +19,9 @@ def all_dates_depths(lake_obs_interpolated,
 
     :param lake_obs_interpolated: DataFrame of observations for one lake, interpolated to the depths in the list `depths`.
     :param depths: Full list of depths at which temperatures will be provided by the trained model.
-    :param temp_col: Name of DataFrame column with temperature values. (Default value = 'temp')
-    :param depth_col: Name of DataFrame column with depth values to match up with `depths`. (Default value = 'interpolated_depth')
-    :param date_col: Name of DataFrame column with observation dates. (Default value = 'date')
+    :param temp_col: Name of DataFrame column with temperature values.
+    :param depth_col: Name of DataFrame column with depth values to match up with `depths`.
+    :param date_col: Name of DataFrame column with observation dates.
     :param pad_before_days: Number of days to pad before the first observation (Default value = 0)
     :param pad_after_days: Number of days to pad after the last observation (Default value = 0)
     :param min_days: Minimum number of days included in output DataFrame (Default value = 1)
@@ -75,6 +75,10 @@ def assemble_lake_data(site_id,
                        temp_col,
                        depth_col,
                        date_col,
+                       area_col,
+                       lon_col,
+                       lat_col,
+                       elevation_col,
                        config):
     """
     Assemble features and observed temperatures from one lake into equal-length
@@ -88,6 +92,13 @@ def assemble_lake_data(site_id,
     :param drivers_file: Meteorological drivers csv for this lake
     :param clarity_file: Time-varying lake clarity csv for this lake
     :param ice_flags_file: Time-varying ice flags csv for this lake
+    :param temp_col: Name of column in obs_interpolated_file with temperature values.
+    :param depth_col: Name of column in obs_interpolated_file with depth values to match up with `depths`.
+    :param date_col: Name of column in obs_interpolated_file with observation dates.
+    :param area_col: Name of column in metadata_augmented_file with lake surface areas.
+    :param lon_col: Name of column in metadata_augmented_file with longitudes.
+    :param lat_col: Name of column in metadata_augmented_file with latitudes.
+    :param elevation_col: Name of column in metadata_augmented_file with lake elevations.
     :param config: Snakemake config for 2_process
     :returns: Numpy array of sequences with shape (# sequences,
         sequence_length, # depths + # features)
@@ -104,7 +115,7 @@ def assemble_lake_data(site_id,
     depths = np.array(config['depths'])
 
     # All temperature observations interpolated to discretized depths
-    obs_interpolated = pd.read_csv(obs_interpolated_file, parse_dates=['date'])
+    obs_interpolated = pd.read_csv(obs_interpolated_file, parse_dates=[date_col])
     # Observations for this lake
     lake_obs_interpolated = obs_interpolated[obs_interpolated.site_id==site_id].copy()
     # Only form sequences if there are any observations in this lake
@@ -143,19 +154,21 @@ def assemble_lake_data(site_id,
         drivers = pd.read_csv(drivers_file, parse_dates=['time'], index_col='time')
         obs_full = obs_full.join(drivers, how='left')
 
-        # Join clarity by date
-        clarity = pd.read_csv(clarity_file, parse_dates=['date'], index_col='date')
-        obs_full = obs_full.join(clarity, how='left')
+        if clarity_file is not None:
+            # Join clarity by date
+            clarity = pd.read_csv(clarity_file, parse_dates=['date'], index_col='date')
+            obs_full = obs_full.join(clarity, how='left')
 
-        # Join ice flags by date
-        ice_flags = pd.read_csv(ice_flags_file, parse_dates=['date'], index_col='date')
-        obs_full = obs_full.join(ice_flags, how='left')
+        if ice_flags_file is not None:
+            # Join ice flags by date
+            ice_flags = pd.read_csv(ice_flags_file, parse_dates=['date'], index_col='date')
+            obs_full = obs_full.join(ice_flags, how='left')
 
         # Get attributes
-        obs_full['area'] = lake['area']
-        obs_full['lon'] = lake['centroid_lon']
-        obs_full['lat'] = lake['centroid_lat']
-        obs_full['elevation'] = lake['elevation']
+        obs_full['area'] = lake[area_col]
+        obs_full['lon'] = lake[lon_col]
+        obs_full['lat'] = lake[lat_col]
+        obs_full['elevation'] = lake[elevation_col]
         # Now obs_full is one long timeseries with depth-specific temperatures,
         # drivers, clarity, ice_flags, and attributes as columns
 
@@ -207,15 +220,17 @@ def main(site_id,
          out_file,
          metadata_augmented_file,
          obs_interpolated_file,
-         drivers_file,
-         clarity_file,
-         ice_flags_file,
+         dynamic_files,
          temp_col,
          depth_col,
          date_col,
+         area_col,
+         lon_col,
+         lat_col,
+         elevation_col,
          config):
     """
-    Process raw data for one MNTOHA lake
+    Process raw data for one lake
     Save those data to a numpy file
 
     :param site_id: site_id of lake to process
@@ -223,12 +238,30 @@ def main(site_id,
     :param metadata_augmented_file: lake metadata file, augmented with elevation
     :param obs_interpolated_file: temperature observations file, interpolated
         to LSTM depths
-    :param drivers_file: Meteorological drivers csv for this lake
-    :param clarity_file: Time-varying lake clarity csv
-    :param ice_flags_file: Time-varying ice flags csv for this lake
+    :param dynamic_files: One-to-three element list of all time-varying files.
+        The first file in the list is the meteorological drivers csv for this
+        lake. The optional second file is the time-varying lake clarity csv.
+        The optional third file is the ice flags csv for this lake.
+    :param temp_col: Name of column in obs_interpolated_file with temperature values.
+    :param depth_col: Name of column in obs_interpolated_file with depth values to match up with `depths`.
+    :param date_col: Name of column in obs_interpolated_file with observation dates.
+    :param area_col: Name of column in metadata_augmented_file with lake surface areas.
+    :param lon_col: Name of column in metadata_augmented_file with longitudes.
+    :param lat_col: Name of column in metadata_augmented_file with latitudes.
+    :param elevation_col: Name of column in metadata_augmented_file with lake elevations.
     :param config: Snakemake config for 2_process
 
     """
+    # Dynamic files list can be one to three elements long
+    # If clarity or ice flags are not in list, pass None to assemble_lake_data
+    drivers_file = dynamic_files[0]
+    clarity_file = None
+    ice_flags_file = None
+    if len(dynamic_files) > 1:
+        clarity_file = dynamic_files[1]
+    if len(dynamic_files) > 2:
+        ice_flags_file = dynamic_files[2]
+
     lake_sequences = assemble_lake_data(
         site_id,
         metadata_augmented_file,
@@ -239,6 +272,10 @@ def main(site_id,
         temp_col,
         depth_col,
         date_col,
+        area_col,
+        lon_col,
+        lat_col,
+        elevation_col,
         config
     )
     np.save(out_file, lake_sequences, allow_pickle=True)
@@ -246,14 +283,16 @@ def main(site_id,
 
 if __name__ == '__main__':
     main(snakemake.wildcards['site_id'],
-         snakemake.output[0], # npy file
-         snakemake.input[0], # metadata_augmented_file
-         snakemake.input[1], # obs_interpolated_file
-         snakemake.input[2], # drivers_file
-         snakemake.input[3], # clarity_file
-         snakemake.input[4], # ice_flags_file
+         snakemake.output.site_sequences_file, # npy file
+         snakemake.input.lake_metadata_file, # metadata_augmented_file
+         snakemake.input.observations_file, # obs_interpolated_file
+         snakemake.input.dynamic_files, # drivers_file[, clarity_file, ice_flags_file]
          snakemake.params['temp_col'],
          snakemake.params['depth_col'],
          snakemake.params['date_col'],
+         snakemake.params['area_col'],
+         snakemake.params['lon_col'],
+         snakemake.params['lat_col'],
+         snakemake.params['elevation_col'],
          snakemake.params['config'])
 

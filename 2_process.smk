@@ -5,6 +5,33 @@ import pandas as pd
 configfile: "2_process/process_config.yaml"
 
 
+"""
+This snakefile processes the data, preparing training, validation, and test
+sets for neural network training. Two data sources are used to form two
+distinct training sets: the MNTOHA data release and the
+lake-temperature-model-prep pipeline. Some rules and functions apply to only
+one data source, while some apply to both. If a rule or function has mntoha or
+model_prep in its name, then you can be sure it only applies to that data
+source. 
+
+This snakefile is organized into four sections:
+
+1. Interpolate observations to specified depths
+2. Prepare lake metadata
+3. Prepare fixed length sequences for the neural network
+4. Summarize and group sequences into training, validation, and testing sets
+
+Sections 1-3 are sub-divided by data source.
+"""
+
+
+#####################################################
+#  1. Interpolate observations to specified depths  #
+#####################################################
+
+
+##### MNTOHA #####
+
 def trigger_unzip_archive(file_category, archive_name):
     """
     Trigger checkpoint to unzip zipped directory
@@ -60,6 +87,8 @@ rule interpolate_mntoha_obs_depths:
         "2_process/src/make_obs_interpolated.py"
 
 
+##### model-prep #####
+
 # Convert 7b_temp_merge/out/merged_temp_data_daily.feather to csv
 rule convert_model_prep_obs_to_csv:
     input:
@@ -82,6 +111,13 @@ rule interpolate_model_prep_obs_depths:
         "2_process/src/make_obs_interpolated.py"
 
 
+##############################
+#  2. Prepare lake metadata  #
+##############################
+
+
+##### MNTOHA #####
+
 # Add elevation to MNTOHA lake metadata
 rule augment_mntoha_lake_metadata:
     input:
@@ -96,6 +132,8 @@ rule augment_mntoha_lake_metadata:
     script:
         "2_process/src/augment_lake_metadata_w_elevation.py"
 
+
+##### model-prep #####
 
 # Convert 8_viz/inout/lakes_summary.feather to csv
 rule convert_model_prep_metadata_to_csv:
@@ -127,6 +165,16 @@ rule convert_model_prep_area_to_csv:
         "2_process/src/convert_rds_to_csv.R"
 
 
+# Convert 7_config_merge/out/nml_Kw_values.rds to csv
+rule convert_model_prep_clarity_to_csv:
+    input:
+        in_file = "2_process/in/model_prep/metadata/nml_Kw_values.rds"
+    output:
+        csv_file = "2_process/tmp/model_prep/nml_Kw_values.csv"
+    script:
+        "2_process/src/convert_rds_to_csv.R"
+
+
 # Add areas from 7_config_merge/out/canonical_lakes_areas.rds to model-prep lake metadata
 rule augment_model_prep_lake_metadata_with_area:
     input:
@@ -143,8 +191,26 @@ rule augment_model_prep_lake_metadata_with_area:
         "2_process/src/augment_lake_metadata_w_feature.py"
 
 
+# Add clarity from 7_config_merge/out/nml_Kw_values.rds to model-prep lake metadata
+rule augment_model_prep_lake_metadata_with_clarity:
+    input:
+        lake_metadata="2_process/tmp/model_prep/lake_metadata_area.csv",
+        feature_metadata="2_process/tmp/model_prep/nml_Kw_values.csv"
+    output:
+        augmented_metadata="2_process/tmp/model_prep/lake_metadata_clarity.csv"
+    params:
+        # Name of clarity column in input file
+        feature_column_in="Kw",
+        # Name to give clarity column in output file
+        feature_column_out="Kw"
+    script:
+        "2_process/src/augment_lake_metadata_w_feature.py"
+
+
 # Add elevation to model_prep lake metadata
-rule augment_model_prep_lake_metadata_with_elevation:
+# This is a checkpoint because lake_metadata_augmented.csv is needed to
+# determine the lake_sequence file names later.
+checkpoint augment_model_prep_lake_metadata_with_elevation:
     input:
         lake_metadata="2_process/tmp/model_prep/lake_metadata_area.csv",
         # elevation_metadata="1_fetch/out/surface/lake_metadata.csv"
@@ -159,16 +225,23 @@ rule augment_model_prep_lake_metadata_with_elevation:
         "2_process/src/augment_lake_metadata_w_elevation.py"
 
 
-def dynamic_filenames(site_id, file_category):
+##############################################################
+#  3. Prepare fixed length sequences for the neural network  #
+##############################################################
+
+
+##### MNTOHA #####
+
+def dynamic_filenames_mntoha(site_id, file_category):
     """
     Return the files that contain dynamic data that are needed to construct
-    sequences for a given lake.
+    sequences for a given MNTOHA lake.
 
     This function also triggers four checkpoints:
     1. fetch_mntoha_metadata to get lake_metadata.csv
     2. unzip_archive for this lake's drivers
     3. unzip_archive for this lake's clarity
-    3. unzip_archive for this lake's ice flags
+    4. unzip_archive for this lake's ice flags
 
     :param site_id: NHDHR lake ID
     :param file_category: Category of files, e.g., dynamic_mntoha. Used by
@@ -198,20 +271,93 @@ def dynamic_filenames(site_id, file_category):
 
 
 # Create .npy of input/output sequences for one lake to use for training and testing
-rule mntoha_lake_sequences:
+rule lake_sequences_mntoha:
     input:
-        "2_process/tmp/mntoha/lake_metadata_augmented.csv",
-        "2_process/tmp/mntoha/temperature_observations_interpolated.csv",
-        lambda wildcards: dynamic_filenames(wildcards.site_id, file_category='dynamic_mntoha')
+        lake_metadata_file = "2_process/tmp/mntoha/lake_metadata_augmented.csv",
+        observations_file = "2_process/tmp/mntoha/temperature_observations_interpolated.csv",
+        dynamic_files = lambda wildcards: dynamic_filenames_mntoha(wildcards.site_id, file_category='dynamic_mntoha')
     output:
-        "2_process/out/mntoha_sequences/sequences_{site_id}.npy"
+        site_sequences_file = "2_process/out/mntoha/sequences/sequences_{site_id}.npy"
     params:
         temp_col = 'temp',
         depth_col = 'interpolated_depth',
         date_col = 'date',
+        area_col = 'area',
+        lon_col = 'centroid_lon',
+        lat_col = 'centroid_lat',
+        elevation_col = 'elevation',
         config = config
     script:
-        "2_process/src/lake_sequences_mntoha.py"
+        "2_process/src/lake_sequences.py"
+
+
+##### model-prep #####
+
+# Convert 7_config_merge/out/nml_meteo_fl_values.rds to csv
+# This is a checkpoint because nml_meteo_fl_values.csv is needed to
+# determine driver files, and the lake_sequence file names later.
+checkpoint convert_model_prep_meteo_crosswalk_to_csv:
+    input:
+        in_file = "2_process/in/model_prep/metadata/nml_meteo_fl_values.rds"
+    output:
+        csv_file = "2_process/tmp/model_prep/nml_meteo_fl_values.csv"
+    script:
+        "2_process/src/convert_rds_to_csv.R"
+
+
+def dynamic_filenames_model_prep(site_id):
+    """
+    Return the file that contains dynamic driver data that are needed to
+    construct sequences for a given lake in the lake-temperature-model_prep
+    footprint. Since only dynamic drivers are available for model-prep data,
+    not time-varying clarity and ice flags, return a list with only one
+    element.
+
+    :param site_id: NHDHR lake ID
+    :returns: List of dynamic filename (One element because there are no clarity or ice flags files)
+
+    """
+    # Location of driver data files
+    meteo_directory = config["meteo_directory"]
+    # Make this function dependent on the meteo crosswalk because the crosswalk
+    # is used to determine driver filenames
+    # meteo_crosswalk_file = "2_process/tmp/model_prep/nml_meteo_fl_values.csv"
+    meteo_crosswalk_file = checkpoints.convert_model_prep_meteo_crosswalk_to_csv.get().output.csv_file
+    meteo_crosswalk = pd.read_csv(meteo_crosswalk_file)
+    meteo_matches = meteo_crosswalk.loc[meteo_crosswalk['site_id']==site_id]
+    if len(meteo_matches) == 0:
+        raise FileNotFoundError(f'No dynamic drivers found for {site_id}')
+    lake = meteo_matches.iloc[0]
+    drivers_filename = lake['meteo_fl']
+    # dynamic filenames
+    drivers_file = os.path.join(meteo_directory, drivers_filename)
+    return [drivers_file]
+
+
+# Create .npy of input/output sequences for one lake to use for training and testing
+rule lake_sequences_model_prep:
+    input:
+        lake_metadata_file = "2_process/tmp/model_prep/lake_metadata_augmented.csv",
+        observations_file = "2_process/tmp/model_prep/temperature_observations_interpolated.csv",
+        dynamic_files = lambda wildcards: dynamic_filenames_model_prep(wildcards.site_id)
+    output:
+        site_sequences_file = "2_process/out/model_prep/sequences/sequences_{site_id}.npy"
+    params:
+        temp_col = 'temp',
+        depth_col = 'interpolated_depth',
+        date_col = 'date',
+        area_col = 'area',
+        lon_col = 'longitude',
+        lat_col = 'latitude',
+        elevation_col = 'elevation',
+        config = config
+    script:
+        "2_process/src/lake_sequences.py"
+
+
+##################################################################################
+#  4. Summarize and group sequences into training, validation, and testing sets  #
+##################################################################################
 
 
 def get_lake_sequence_files(sequence_file_template, data_source):
@@ -228,18 +374,40 @@ def get_lake_sequence_files(sequence_file_template, data_source):
     :returns: List of lake training/testing sequence files.
 
     """
-    # Make this function dependent on lake metadata
-    # Needed because lake metadata is used to determine lake_sequence_files
     if data_source == 'mntoha':
+        # Make this function dependent on lake metadata
+        # Needed because lake metadata is used to determine lake_sequence_files
+        # lake_metadata_file = "1_fetch/out/lake_metadata.csv"
         lake_metadata_file = checkpoints.fetch_mntoha_metadata.get().output[0]
+        lake_metadata = pd.read_csv(lake_metadata_file)
+        site_ids = list(lake_metadata.site_id)
+    elif data_source == 'model_prep':
+        # Make this function dependent on lake metadata and the meteo crosswalk
+        # because both are used to determine lake_sequence_files
+        # lake_metadata_file = "2_process/tmp/model_prep/lake_metadata_augmented.csv"
+        lake_metadata_file = (
+            checkpoints.augment_model_prep_lake_metadata_with_elevation
+            .get().output.augmented_metadata
+        )
+        # meteo_crosswalk_file = "2_process/tmp/model_prep/nml_meteo_fl_values.csv"
+        meteo_crosswalk_file = (
+            checkpoints.convert_model_prep_meteo_crosswalk_to_csv
+            .get().output.csv_file
+        )
+        lake_metadata = pd.read_csv(lake_metadata_file)
+        meteo_crosswalk = pd.read_csv(meteo_crosswalk_file)
+        # Only use sites that are in both lake_metadata and meteo_crosswalk
+        # Use Python's set intersection to get a list of such sites
+        site_ids_metadata = lake_metadata.site_id
+        site_ids_crosswalk = meteo_crosswalk.site_id
+        site_ids = list(set(site_ids_metadata) & set(site_ids_crosswalk))
     else:
         raise ValueError(f'Data source {data_source} not recognized')
-    lake_metadata = pd.read_csv(lake_metadata_file)
     # Fill in the two replacement fields in sequence_file_template with the
     # data source and the lake site ID, respectively.
     lake_sequence_files = [
         sequence_file_template.format(data_source, site_id) 
-        for site_id in lake_metadata.site_id
+        for site_id in site_ids
     ]
     return lake_sequence_files
 
@@ -269,11 +437,11 @@ def save_sequences_summary(lake_sequence_files_input, summary_file):
 rule process_sequences:
     input:
         lambda wildcards: get_lake_sequence_files(
-            '2_process/out/{}_sequences/sequences_{}.npy',
+            '2_process/out/{}/sequences/sequences_{}.npy',
             wildcards.data_source
         )
     output:
-        "2_process/out/{data_source}_sequences/{data_source}_sequences_summary.csv"
+        "2_process/out/{data_source}/sequences/{data_source}_sequences_summary.csv"
     run:
         save_sequences_summary(input, output[0])
 
@@ -282,10 +450,10 @@ rule process_sequences:
 rule create_training_data:
     input:
         lambda wildcards: get_lake_sequence_files(
-            '2_process/out/{}_sequences/sequences_{}.npy',
+            '2_process/out/{}/sequences/sequences_{}.npy',
             wildcards.data_source
         ),
-        sequences_summary_file = "2_process/out/{data_source}_sequences/{data_source}_sequences_summary.csv"
+        sequences_summary_file = "2_process/out/{data_source}/sequences/{data_source}_sequences_summary.csv"
     output:
         train_file = "2_process/out/{data_source}/train.npz",
         test_file = "2_process/out/{data_source}/test.npz",
