@@ -65,6 +65,8 @@ def read_sequences(lake_sequence_files, n_depths):
     :returns: numpy array of sequences
 
     """
+    # Read (1) sequences, (2) start dates, and (3) lake IDs from each lake
+    # sequence file, and concatenate them into three equal-length lists
     sequences_list = []
     start_dates_list = []
     site_ids_list = []
@@ -90,7 +92,7 @@ def read_sequences(lake_sequence_files, n_depths):
     start_dates = np.concatenate(start_dates_list)
     site_ids = np.concatenate(site_ids_list)
 
-    # Remove input features with nans
+    # Trim all three lists equally to remove all sequences with any NaN input features
     # Shape of sequences is (# sequences, sequence_length, # depths + # input features)
     # Slice from n_depths forward to index input features only
     nan_inputs = np.any(np.isnan(sequences[:, :, n_depths:]), axis=(1,2))
