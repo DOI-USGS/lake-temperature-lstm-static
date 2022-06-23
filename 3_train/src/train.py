@@ -352,7 +352,7 @@ def save_weights(model, filepath, overwrite=True):
     torch.save(model.state_dict(), filepath)
 
 
-def save_metadata(config, npz_filepath, save_filepath, overwrite=True):
+def save_metadata(config, train_npz_filepath, valid_npz_filepath, save_filepath, overwrite=True):
     """
     Save configuration settings and metadata
     
@@ -363,7 +363,8 @@ def save_metadata(config, npz_filepath, save_filepath, overwrite=True):
     overwriting any existing files.
 
     :param config: Dictionary of configuration settings and training results to save
-    :param npz_filepath: Name and path to .npz data file containing training data
+    :param train_npz_filepath: Name and path to .npz data file containing training data
+    :param valid_npz_filepath: Name and path to .npz data file containing validation data
     :param save_filepath: Path and filename to save to
     :param overwrite: If True, overwrite existing file if necessary. If False,
         append a unique suffix to the filename before saving.
@@ -383,14 +384,24 @@ def save_metadata(config, npz_filepath, save_filepath, overwrite=True):
             suffix += 1
             save_filepath = f'{root}_{suffix}{extension}'
 
-    # Save all metadata in npz...
-    data_npz = np.load(npz_filepath)
+    # Save all metadata in npzs
+    train_npz = np.load(train_npz_filepath)
+    valid_npz = np.load(valid_npz_filepath)
     # ...but not the training data itself
-    data_npz.files.remove('data')
+    train_npz.files.remove('data')
     # Combine training data settings and config into a new metadata dictionary
     metadata = {}
-    for key in data_npz:
-        metadata[key] = data_npz[key]
+    # The start dates and the site IDs are different for training and validation data
+    # Save start_dates and site_ids for both train and valid
+    metadata['train_start_dates'] = train_npz['start_dates']
+    metadata['train_start_dates'] = train_npz['start_dates']
+    metadata['train_site_ids'] = train_npz['site_ids']
+    metadata['train_site_ids'] = train_npz['site_ids']
+    train_npz.files.remove('start_dates')
+    train_npz.files.remove('site_ids')
+    # The rest of the metadata in train_npz is identical to valid_npz
+    for key in train_npz:
+        metadata[key] = train_npz[key]
     # Any duplicate keys get overwritten by the value in config
     for key in config:
         metadata[key] = config[key]
@@ -524,7 +535,7 @@ def main(train_npz_filepath,
     config['n_epochs_trained'] = len(train_losses)
     config['git_hash'] = get_git_hash()
     config['git_status'] = get_git_status()
-    save_metadata(config, npz_filepath, metadata_filepath, overwrite=True)
+    save_metadata(config, train_npz_filepath, valid_npz_filepath, metadata_filepath, overwrite=True)
 
 
 if __name__ == '__main__':

@@ -33,9 +33,7 @@ dynamic_features_all: [
     'RelHum',
     'WindSpeed',
     'Rain',
-    'Snow',
-    'kd',
-    'ice'
+    'Snow'
 ]
 static_features_all: ['area', 'centroid_lon', 'centroid_lat', 'elevation']
 
