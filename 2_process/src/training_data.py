@@ -73,18 +73,20 @@ def read_sequences(lake_sequence_files, n_depths):
     return sequences[np.invert(nan_inputs), :, :]
 
 
-def get_train_test_sequences_files(sequences_summary_file,
-                                   train_frac,
-                                   test_frac,
-                                   seed):
+def split_sequence_files(sequences_summary_file,
+                         train_frac,
+                         valid_frac,
+                         test_frac,
+                         seed):
     """
-    Split lakes into train and test data.
+    Split lakes into training, validation, and test data.
     
     This function takes lake-specific sequence files and randomly splits them
-    into training and testing sets.
+    into training, validation, and testing sets.
 
     :param sequences_summary_file: Summary csv with columns sequences_file and num_sequences.
     :param train_frac: The fraction of lakes to put into the training set.
+    :param valid_frac: The fraction of lakes to put into the validation set.
     :param test_frac: The fraction of lakes to put into the test set.
     :param seed: Random seed used to shuffle lakes.
     :returns: Tuple of two lists; one list of lake sequence files in the
@@ -97,29 +99,33 @@ def get_train_test_sequences_files(sequences_summary_file,
     nonzero_sequences = sequences_summary[sequences_summary.num_sequences>0]
     num_lakes = len(nonzero_sequences)
 
-    # Split lake indices into train and test
-    train_lakes, test_lakes = split_indices(num_lakes, [train_frac, test_frac], seed=seed)
+    # Split lake indices into train, validation, and test
+    train_lakes, valid_lakes, test_lakes = split_indices(num_lakes, [train_frac, valid_frac, test_frac], seed=seed)
 
     train_lake_sequences_files = nonzero_sequences.sequences_file.iloc[train_lakes].to_list()
+    valid_lake_sequences_files = nonzero_sequences.sequences_file.iloc[valid_lakes].to_list()
     test_lake_sequences_files = nonzero_sequences.sequences_file.iloc[test_lakes].to_list()
-    return (train_lake_sequences_files, test_lake_sequences_files)
+    return (train_lake_sequences_files, valid_lake_sequences_files, test_lake_sequences_files)
 
 
 def get_train_test_data(train_lake_sequences_files,
+                        valid_lake_sequences_files,
                         test_lake_sequences_files,
                         n_depths,
                         n_dynamic,
                         n_static):
     """
-    Create train and test data
+    Create training, validation, and test data
     
     This function takes data from lake-specific sequences in .npy files and
-    creates arrays for training and testing.
+    creates arrays for training, validation, and testing.
     1. Read lake-specific sequences from .npy files and concatenate
     2. Standardize using training data
 
     :param train_lake_sequences_files: List of lake sequence files in the
         training set
+    :param valid_lake_sequences_files: List of lake sequence files in the
+        validation set
     :param test_lake_sequences_files: List of lake sequence files in the test
         set
     :param n_depths: Number of discrete depths at which LSTM will output
@@ -139,6 +145,7 @@ def get_train_test_data(train_lake_sequences_files,
     # 1. Read lake-specific sequences from .npy files and concatenate
 
     unscaled_train_data = read_sequences(train_lake_sequences_files, n_depths)
+    unscaled_valid_data = read_sequences(valid_lake_sequences_files, n_depths)
     unscaled_test_data = read_sequences(test_lake_sequences_files, n_depths)
 
     # 2. Standardize using training data
@@ -152,9 +159,11 @@ def get_train_test_data(train_lake_sequences_files,
     # The means and stds are arrays of length (# depths + # input features)
     # So, numpy will broadcast across the last dimension of unscaled_train_data
     train_data = (unscaled_train_data - train_data_means)/train_data_stds
+    valid_data = (unscaled_valid_data - train_data_means)/train_data_stds
     test_data = (unscaled_test_data - train_data_means)/train_data_stds
 
     return (train_data,
+            valid_data,
             test_data,
             train_data_means,
             train_data_stds
@@ -163,36 +172,39 @@ def get_train_test_data(train_lake_sequences_files,
 
 def main(sequences_summary_file,
          train_file,
+         valid_file,
          test_file,
-         train_test_summary_file,
+         split_summary_file,
          process_config):
     """
-    Read lake-specific sequences from .npy files, save .npz files for training
-    and test data, and save a file listing which lakes went into the training
-    set and which lakes went into the test set.
+    Read lake-specific sequences from .npy files, save .npz files for training,
+    validation, and test data, and save a file listing which lakes went into
+    each set.
 
     :param sequences_summary_file: Summary csv with columns sequences_file and
         num_sequences.
     :param train_file: training data npz filename with extension
+    :param valid_file: validation data npz filename with extension
     :param test_file: test data npz filename with extension
-    :param train_test_summary_file: Filename of csv listing whether lakes were
-        put into train or test set
-    :param process_config: Configuration settings used to form training and test sets.
-        Found in 2_process/process_config.yaml
+    :param split_summary_file: Filename of csv listing the set for each lake.
+    :param process_config: Configuration settings used to form sets. Found in
+        2_process/process_config.yaml
 
     """
 
-    # Split lake sequence files into train and test sets
-    train_lake_sequences_files, test_lake_sequences_files = get_train_test_sequences_files(
+    # Split lake sequence files into training, validation, and test sets
+    train_lake_sequences_files, valid_lake_sequences_files, test_lake_sequences_files = split_sequence_files(
         sequences_summary_file,
         process_config['train_frac'],
+        process_config['valid_frac'],
         process_config['test_frac'],
         process_config['seed']
     )
 
-    # Get training and test data
-    train_data, test_data, train_data_means, train_data_stds = get_train_test_data(
+    # Get training, validation, and test data
+    train_data, valid_data, test_data, train_data_means, train_data_stds = get_train_test_data(
         train_lake_sequences_files,
+        valid_lake_sequences_files,
         test_lake_sequences_files,
         len(process_config['depths_all']),
         len(process_config['dynamic_features_all']),
@@ -200,7 +212,7 @@ def main(sequences_summary_file,
     )
 
     # Create new directories as needed
-    for filepath in [train_file, test_file, train_test_summary_file]:
+    for filepath in [train_file, valid_file, test_file, split_summary_file]:
         directory = os.path.dirname(filepath)
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -213,25 +225,33 @@ def main(sequences_summary_file,
              train_data_means=train_data_means,
              train_data_stds=train_data_stds,
              **process_config)
+    np.savez(valid_file,
+             data=valid_data,
+             train_data_means=train_data_means,
+             train_data_stds=train_data_stds,
+             **process_config)
     np.savez(test_file,
              data=test_data,
              train_data_means=train_data_means,
              train_data_stds=train_data_stds,
              **process_config)
 
-    # Save which lakes are in the training set and which are in the test set
+    # Save which lakes are in each set: training, validation, or test
     train_lakes_df = pd.DataFrame({'lake_sequences_file':train_lake_sequences_files,
                                    'set':'train'})
+    valid_lakes_df = pd.DataFrame({'lake_sequences_file':valid_lake_sequences_files,
+                                   'set':'valid'})
     test_lakes_df = pd.DataFrame({'lake_sequences_file':test_lake_sequences_files,
                                    'set':'test'})
-    log_df = pd.concat([train_lakes_df, test_lakes_df])
-    log_df.to_csv(train_test_summary_file, index=False, header=False)
+    log_df = pd.concat([train_lakes_df, valid_lakes_df, test_lakes_df])
+    log_df.to_csv(split_summary_file, index=False, header=False)
 
 
 if __name__ == '__main__':
     main(snakemake.input['sequences_summary_file'],
          snakemake.output['train_file'],
+         snakemake.output['valid_file'],
          snakemake.output['test_file'],
-         snakemake.output['train_test_summary_file'],
+         snakemake.output['split_summary_file'],
          snakemake.params['process_config'])
 
