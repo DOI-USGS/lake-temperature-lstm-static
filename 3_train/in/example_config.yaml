@@ -15,10 +15,6 @@ depths_use: [0.,  0.5,  1.,  1.5,  2.,  2.5,  3.,  3.5,  4.,  4.5,  5., 5.5,
 hidden_size: 20
 concat_static: False # False for EA-LSTM, True for CS-LSTM
 
-# validation set
-valid_frac: 0.20
-k_folds: 5
-
 # training
 batch_size: 64
 initial_forget_bias: 5 # value of the initial forget bias gate
