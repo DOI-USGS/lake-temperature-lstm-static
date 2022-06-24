@@ -100,7 +100,7 @@ def get_sequence_dataset(npz_filepath,
     
     Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#create-fit-and-get-data
 
-    :param npz_filepath: Name and path to training data .npz file
+    :param npz_filepath: Name and path to .npz data file
     :param dynamic_features_use: List of dynamic features to include
     :param static_features_use: List of static features to include
     :param depths_use: List of depth values to include
@@ -394,12 +394,14 @@ def save_metadata(config, train_npz_filepath, valid_npz_filepath, save_filepath,
     # The start dates and the site IDs are different for training and validation data
     # Save start_dates and site_ids for both train and valid
     metadata['train_start_dates'] = train_npz['start_dates']
-    metadata['train_start_dates'] = train_npz['start_dates']
+    metadata['valid_start_dates'] = valid_npz['start_dates']
     metadata['train_site_ids'] = train_npz['site_ids']
-    metadata['train_site_ids'] = train_npz['site_ids']
+    metadata['valid_site_ids'] = valid_npz['site_ids']
+    # Remove start_dates and site_ids so that they don't get added to metadata twice
     train_npz.files.remove('start_dates')
     train_npz.files.remove('site_ids')
     # The rest of the metadata in train_npz is identical to valid_npz
+    # So, we can add it from train_npz alone without any loss of info
     for key in train_npz:
         metadata[key] = train_npz[key]
     # Any duplicate keys get overwritten by the value in config
