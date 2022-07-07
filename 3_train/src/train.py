@@ -253,7 +253,7 @@ def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
     return loss.item(), torch.sum(loss_idx).item()
 
 
-def fit(epochs, model, loss_func, opt, train_dl, valid_dl, device, verbose=False):
+def fit(epochs, model, loss_func, opt, train_dl, valid_dl, device, weights_filepath, verbose=False):
     """
     Train the model, and compute training and validation losses for each epoch
     
@@ -320,6 +320,11 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, device, verbose=False
         print(f'{epoch}: {datetime.now()} {train_loss}, {valid_loss}', flush=True)
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
+
+        # If this model has the lowest validation loss, save model weights
+        if valid_loss == min(valid_losses):
+            save_weights(model, weights_filepath, overwrite=True)
+
     return train_losses, valid_losses
 
 
@@ -523,12 +528,17 @@ def main(train_npz_filepath,
 
     # Training loop
     train_start_time = str(datetime.now())
-    train_losses, valid_losses = fit(config['max_epochs'], model, loss_func, optimizer, train_data_loader, valid_data_loader, device)
+    train_losses, valid_losses = fit(config['max_epochs'],
+                                     model,
+                                     loss_func,
+                                     optimizer,
+                                     train_data_loader,
+                                     valid_data_loader,
+                                     device,
+                                     weights_filepath)
     train_end_time = str(datetime.now())
     print('Finished Training', flush=True)
 
-    # Save model weights
-    save_weights(model, weights_filepath, overwrite=True)
     # Save model settings and training metrics
     config['model_id'] = model_id
     config['train_start_time'] = train_start_time
