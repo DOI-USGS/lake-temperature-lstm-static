@@ -16,7 +16,7 @@ from models import Model
 
 class SequenceDataset(Dataset):
     """
-    Custom Dataset class for sequences that include dynamic and static inputs,
+    Custom Torch Dataset class for sequences that include dynamic and static inputs
     and multiple outputs
     
     __len__ returns the number of sequences
@@ -71,33 +71,14 @@ class SequenceDataset(Dataset):
         return dynamic_features, static_features, temperatures
 
 
-def split(dataset, fraction, seed):
-    """
-    Randomly split a dataset into two non-overlapping subsets
-
-    :param dataset: A torch.utils.data.Dataset to be split
-    :param fraction: The fraction of data samples to put in the first subset
-    :param seed: Integer seed for random number generator
-    :returns: Tuple of two datasets for the two subsets
-
-    """
-    # split into two subsets
-    n_total = len(dataset)
-    n_1 = int(round(n_total * fraction))
-    n_2 = n_total - n_1
-    subset_1, subset_2 = random_split(
-        dataset, [n_1, n_2], generator=torch.Generator().manual_seed(seed))
-    return subset_1, subset_2
-
-
 def get_data_loaders(train_ds, valid_ds, batch_size):
     """
-    Get data loaders for both the train dataset and the validate dataset
+    Get Torch DataLoaders for both the train Dataset and the validate Dataset
     
     Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#create-fit-and-get-data
 
-    :param train_ds: Dataset for training data
-    :param valid_ds: Dataset for validation data
+    :param train_ds: Torch Dataset for training data
+    :param valid_ds: Torch Dataset for validation data
     :param batch_size: Number of elements in each training batch
     :returns: Tuple of training data loader and validation data loader
 
@@ -110,15 +91,12 @@ def get_data_loaders(train_ds, valid_ds, batch_size):
     )
 
 
-def get_data(npz_filepath,
-             dynamic_features_use,
-             static_features_use,
-             depths_use,
-             batch_size,
-             valid_frac,
-             seed):
+def get_sequence_dataset(npz_filepath,
+                        dynamic_features_use,
+                        static_features_use,
+                        depths_use):
     """
-    Get train and validate dataloaders from npz file
+    Get SequenceDataset from npz file
     
     Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#create-fit-and-get-data
 
@@ -126,17 +104,9 @@ def get_data(npz_filepath,
     :param dynamic_features_use: List of dynamic features to include
     :param static_features_use: List of static features to include
     :param depths_use: List of depth values to include
-    :param batch_size: Number of elements in each training batch
-    :param valid_frac: The fraction of data samples to put into the validation set
-    :param seed: Integer seed for random number generator
 
     """
-
-    # Check that valid_frac is a fraction
-    if (valid_frac < 0) or (valid_frac > 1):
-        raise ValueError("valid_frac must be between 0 and 1")
-
-    # Training data
+    # Load data
     data_npz = np.load(npz_filepath)
 
     # Determine which depths and features to use
@@ -156,14 +126,46 @@ def get_data(npz_filepath,
     n_dynamic = len(dynamic_features_use)
     n_static = len(static_features_use)
 
-    # Train/validate split
     dataset = SequenceDataset(
         data_array_to_use,
         n_depths,
         n_dynamic,
         n_static
     )
-    train_subset, valid_subset = split(dataset, 1-valid_frac, seed)
+    return dataset
+
+
+def get_data(train_npz_filepath,
+             valid_npz_filepath,
+             dynamic_features_use,
+             static_features_use,
+             depths_use,
+             batch_size):
+    """
+    Get train and validate dataloaders from npz file
+    
+    Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#create-fit-and-get-data
+
+    :param train_npz_filepath: Name and path to training data .npz file
+    :param valid_npz_filepath: Name and path to validation data .npz file
+    :param dynamic_features_use: List of dynamic features to include
+    :param static_features_use: List of static features to include
+    :param depths_use: List of depth values to include
+    :param batch_size: Number of elements in each training batch
+
+    """
+
+    # Get SequenceDataset (custom Dataset) objects for training and validation datasets
+    train_subset = get_sequence_dataset(
+        train_npz_filepath,
+        dynamic_features_use,
+        static_features_use,
+        depths_use)
+    valid_subset = get_sequence_dataset(
+        valid_npz_filepath,
+        dynamic_features_use,
+        static_features_use,
+        depths_use)
     return get_data_loaders(train_subset, valid_subset, batch_size)
 
 
@@ -350,7 +352,7 @@ def save_weights(model, filepath, overwrite=True):
     torch.save(model.state_dict(), filepath)
 
 
-def save_metadata(config, npz_filepath, save_filepath, overwrite=True):
+def save_metadata(config, train_npz_filepath, valid_npz_filepath, save_filepath, overwrite=True):
     """
     Save configuration settings and metadata
     
@@ -361,7 +363,8 @@ def save_metadata(config, npz_filepath, save_filepath, overwrite=True):
     overwriting any existing files.
 
     :param config: Dictionary of configuration settings and training results to save
-    :param npz_filepath: Name and path to .npz data file containing training data
+    :param train_npz_filepath: Name and path to .npz data file containing training data
+    :param valid_npz_filepath: Name and path to .npz data file containing validation data
     :param save_filepath: Path and filename to save to
     :param overwrite: If True, overwrite existing file if necessary. If False,
         append a unique suffix to the filename before saving.
@@ -381,15 +384,28 @@ def save_metadata(config, npz_filepath, save_filepath, overwrite=True):
             suffix += 1
             save_filepath = f'{root}_{suffix}{extension}'
 
-    # Save all metadata in npz...
-    data_npz = np.load(npz_filepath)
+    # Save all metadata in npzs
+    train_npz = np.load(train_npz_filepath)
+    valid_npz = np.load(valid_npz_filepath)
     # ...but not the training data itself
-    data_npz.files.remove('data')
+    train_npz.files.remove('data')
     # Combine training data settings and config into a new metadata dictionary
     metadata = {}
-    for key in data_npz:
-        metadata[key] = data_npz[key]
-    # Any duplicate keys get overwritten by the value in config
+    # The start dates and the site IDs are different for training and validation data
+    # Save start_dates and site_ids for both train and valid
+    metadata['train_start_dates'] = train_npz['start_dates']
+    metadata['valid_start_dates'] = valid_npz['start_dates']
+    metadata['train_site_ids'] = train_npz['site_ids']
+    metadata['valid_site_ids'] = valid_npz['site_ids']
+    # Remove start_dates and site_ids so that they don't get added to metadata twice
+    train_npz.files.remove('start_dates')
+    train_npz.files.remove('site_ids')
+    # The rest of the metadata in train_npz (training data means and standard 
+    # deviations, process_config parameters) is identical to that in valid_npz
+    # So, we can add it from train_npz alone without any loss of info
+    for key in train_npz:
+        metadata[key] = train_npz[key]
+    # Any duplicate keys get overwritten by the value in `config` (the train_config)
     for key in config:
         metadata[key] = config[key]
     np.savez(save_filepath, **metadata)
@@ -418,14 +434,21 @@ def get_git_status():
     return subprocess.check_output(['git', 'status']).decode('ascii').strip()
 
 
-def main(npz_filepath, weights_filepath, metadata_filepath, run_id, model_id, config):
+def main(train_npz_filepath, 
+         valid_npz_filepath,
+         weights_filepath,
+         metadata_filepath,
+         run_id,
+         model_id,
+         config):
     """
     Train a model and save the trained weights
     
-    Load training and validation data from a .npz file. Use the settings
+    Load training and validation data from .npz files. Use the settings
     specified in the config dictionary. Train the model, and save its weights.
 
-    :param npz_filepath: Name and path to .npz data file
+    :param train_npz_filepath: Name and path to training data .npz file
+    :param valid_npz_filepath: Name and path to validation data .npz file
     :param weights_filepath: Path and filename to save weights to
     :param metadata_filepath: Path and filename to save metadata to
     :param run_id: ID of the current training run (experiment). Value must
@@ -444,8 +467,6 @@ def main(npz_filepath, weights_filepath, metadata_filepath, run_id, model_id, co
         static_features_use   list of strings, Names of static features for model to use
         dynamic_features_use  list of strings, Names of dynamic features for model to use
         depths_use            list of floats, depth values of temperatures for model to use
-        seed                  integer, Seed for the random number generator
-        valid_frac            float, Fraction of examples to put into the validation set
         batch_size            integer, Number of examples per training batch
 
     """
@@ -461,13 +482,12 @@ def main(npz_filepath, weights_filepath, metadata_filepath, run_id, model_id, co
 
     # Create dataloaders
     train_data_loader, valid_data_loader = get_data(
-        npz_filepath,
+        train_npz_filepath,
+        valid_npz_filepath,
         config['dynamic_features_use'],
         config['static_features_use'],
         config['depths_use'],
-        config['batch_size'],
-        config['valid_frac'],
-        config['seed']
+        config['batch_size']
     )
 
     n_depths = len(config['depths_use'])
@@ -518,11 +538,12 @@ def main(npz_filepath, weights_filepath, metadata_filepath, run_id, model_id, co
     config['n_epochs_trained'] = len(train_losses)
     config['git_hash'] = get_git_hash()
     config['git_status'] = get_git_status()
-    save_metadata(config, npz_filepath, metadata_filepath, overwrite=True)
+    save_metadata(config, train_npz_filepath, valid_npz_filepath, metadata_filepath, overwrite=True)
 
 
 if __name__ == '__main__':
-    main(snakemake.input.npz_filepath,
+    main(snakemake.input.train_npz_filepath,
+         snakemake.input.valid_npz_filepath,
          snakemake.output.weights_filepath,
          snakemake.output.metadata_filepath,
          snakemake.params.run_id,

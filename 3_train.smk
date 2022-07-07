@@ -38,7 +38,8 @@ def read_train_config(data_source, run_id):
 # $ snakemake --cores all 3_train/out/mntoha/4/hidden_size-50_weights.pt
 rule train_model:
     input:
-        npz_filepath = "2_process/out/{data_source}/train.npz",
+        train_npz_filepath = "2_process/out/{data_source}/train.npz",
+        valid_npz_filepath = "2_process/out/{data_source}/valid.npz",
         # Include configs as inputs in order to trigger save_config rule,
         # and save configs to the output folder
         process_config = "3_train/out/{data_source}/{run_id}/{run_id}_process.yaml",
