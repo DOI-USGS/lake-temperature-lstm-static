@@ -400,11 +400,12 @@ def save_metadata(config, train_npz_filepath, valid_npz_filepath, save_filepath,
     # Remove start_dates and site_ids so that they don't get added to metadata twice
     train_npz.files.remove('start_dates')
     train_npz.files.remove('site_ids')
-    # The rest of the metadata in train_npz is identical to valid_npz
+    # The rest of the metadata in train_npz (training data means and standard 
+    # deviations, process_config parameters) is identical to that in valid_npz
     # So, we can add it from train_npz alone without any loss of info
     for key in train_npz:
         metadata[key] = train_npz[key]
-    # Any duplicate keys get overwritten by the value in config
+    # Any duplicate keys get overwritten by the value in `config` (the train_config)
     for key in config:
         metadata[key] = config[key]
     np.savez(save_filepath, **metadata)
