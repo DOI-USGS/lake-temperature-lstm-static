@@ -334,14 +334,14 @@ def dynamic_filenames_model_prep(site_id):
     return [drivers_file]
 
 
-# Create .npy of input/output sequences for one lake to use for training and testing
+# Create .npz of input/output sequences for one lake to use for training and testing
 rule lake_sequences_model_prep:
     input:
         lake_metadata_file = "2_process/tmp/model_prep/lake_metadata_augmented.csv",
         observations_file = "2_process/tmp/model_prep/temperature_observations_interpolated.csv",
         dynamic_files = lambda wildcards: dynamic_filenames_model_prep(wildcards.site_id)
     output:
-        site_sequences_file = "2_process/out/model_prep/sequences/sequences_{site_id}.npy"
+        site_sequences_file = "2_process/out/model_prep/sequences/sequences_{site_id}.npz"
     params:
         temp_col = 'temp',
         depth_col = 'interpolated_depth',
@@ -423,8 +423,8 @@ def save_sequences_summary(lake_sequence_files_input, summary_file):
     """
     sequence_counts = []
     for sequences_file in lake_sequence_files_input:
-        # Sequence files have shape (# sequences, sequence length, # depths + # features)
-        num_sequences = np.load(sequences_file).shape[0] 
+        # The `lake_sequences` elements of the sequence files have shape (# sequences, sequence length, # depths + # features)
+        num_sequences = np.load(sequences_file)['lake_sequences'].shape[0] 
         sequence_counts.append(num_sequences)
     df_counts = pd.DataFrame(data={
         'sequences_file': lake_sequence_files_input,
@@ -437,7 +437,7 @@ def save_sequences_summary(lake_sequence_files_input, summary_file):
 rule process_sequences:
     input:
         lambda wildcards: get_lake_sequence_files(
-            '2_process/out/{}/sequences/sequences_{}.npy',
+            '2_process/out/{}/sequences/sequences_{}.npz',
             wildcards.data_source
         )
     output:
@@ -450,7 +450,7 @@ rule process_sequences:
 rule create_training_data:
     input:
         lambda wildcards: get_lake_sequence_files(
-            '2_process/out/{}/sequences/sequences_{}.npy',
+            '2_process/out/{}/sequences/sequences_{}.npz',
             wildcards.data_source
         ),
         sequences_summary_file = "2_process/out/{data_source}/sequences/{data_source}_sequences_summary.csv"

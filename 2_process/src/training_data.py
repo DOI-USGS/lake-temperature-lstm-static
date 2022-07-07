@@ -1,4 +1,4 @@
-# Read lake-specific sequences from .npy files and save .npz files for training and test data
+# Read lake-specific sequences from .npz files and save .npz files for training and test data
 
 import os
 import numpy as np
@@ -59,18 +59,47 @@ def read_sequences(lake_sequence_files, n_depths):
     among their input features, and return a single numpy array containing all
     sequences from all sequence files.
 
-    :param lake_sequence_files: List of lake sequence .npy files
+    :param lake_sequence_files: List of lake sequence .npz files
     :param n_depths: Number of discrete depths at which LSTM will output
         temperatures
     :returns: numpy array of sequences
 
     """
-    sequences = np.concatenate([np.load(sfn) for sfn in lake_sequence_files])
-    # remove input features with nans
-    # shape of sequences is (# sequences, sequence_length, # depths + # input features)
-    # slice from n_depths forward to index input features only
+    # Read (1) sequences, (2) start dates, and (3) lake IDs from each lake
+    # sequence file, and concatenate them into three equal-length lists
+    sequences_list = []
+    start_dates_list = []
+    site_ids_list = []
+    for lake_sequence_file in lake_sequence_files:
+        npz = np.load(lake_sequence_file)
+        # 1. Lake sequence data
+        sequences_list.append(npz['lake_sequences'])
+        # 2. Sequence start dates
+        lake_start_dates = npz['start_dates']
+        # Convert from float32 days to np.datetime64
+        lake_start_dates64 = [np.datetime64(int(lsd), 'D') for lsd in lake_start_dates]
+        start_dates_list.append(lake_start_dates64)
+        # 3. Lake site ID
+        lake_sequence_filename = os.path.basename(lake_sequence_file)
+        # Format of each filename is "sequences_{site_id}.npz"
+        site_id = lake_sequence_filename[10:-4]
+        # Shape of sequences is (# sequences, sequence_length, # depths + # input features)
+        num_sequences = npz['lake_sequences'].shape[0]
+        # Repeat site ID once for every sequence in file
+        site_ids_list.append([site_id]*num_sequences)
+
+    sequences = np.concatenate(sequences_list)
+    start_dates = np.concatenate(start_dates_list)
+    site_ids = np.concatenate(site_ids_list)
+
+    # Trim all three lists equally to remove all sequences with any NaN input features
+    # Shape of sequences is (# sequences, sequence_length, # depths + # input features)
+    # Slice from n_depths forward to index input features only
     nan_inputs = np.any(np.isnan(sequences[:, :, n_depths:]), axis=(1,2))
-    return sequences[np.invert(nan_inputs), :, :]
+    no_nan_inputs = np.invert(nan_inputs)
+    return (sequences[no_nan_inputs, :, :],
+            start_dates[no_nan_inputs],
+            site_ids[no_nan_inputs])
 
 
 def split_sequence_files(sequences_summary_file,
@@ -117,10 +146,12 @@ def get_train_test_data(train_lake_sequences_files,
     """
     Create training, validation, and test data
     
-    This function takes data from lake-specific sequences in .npy files and
+    This function takes data from lake-specific sequences in .npz files and
     creates arrays for training, validation, and testing.
-    1. Read lake-specific sequences from .npy files and concatenate
+    1. Read lake-specific sequences from .npz files and concatenate
     2. Standardize using training data
+    3. Return data arrays, arrays of sequence start dates, and lake IDs for
+       each sequence.
 
     :param train_lake_sequences_files: List of lake sequence files in the
         training set
@@ -132,21 +163,25 @@ def get_train_test_data(train_lake_sequences_files,
         temperatures
     :param n_dynamic: Number of dynamic input features
     :param n_static: Number of static input features
-    :returns: Tuple of four elements
-        1. 3D numpy array of training data
-        2. Numpy array of test data
-        3. Numpy array of means of training data (input features and
+    :returns: Tuple of five elements
+        1. Tuple of 3D Numpy arrays of training data, validation data, and
+           testing data
+        2. Tuple of Numpy arrays of start dates for sequences in training,
+           validation, and testing sets
+        3. Tuple of Numpy arrays of lake IDs for sequences in training,
+           validation, and testing sets
+        4. Numpy array of means of training data (input features and
            temperatures)
-        4. Numpy array of standard deviations of training data (input features
+        5. Numpy array of standard deviations of training data (input features
            and temperatures)
 
     """
 
-    # 1. Read lake-specific sequences from .npy files and concatenate
+    # 1. Read lake-specific sequences from .npz files and concatenate
 
-    unscaled_train_data = read_sequences(train_lake_sequences_files, n_depths)
-    unscaled_valid_data = read_sequences(valid_lake_sequences_files, n_depths)
-    unscaled_test_data = read_sequences(test_lake_sequences_files, n_depths)
+    unscaled_train_data, train_start_dates, train_site_ids = read_sequences(train_lake_sequences_files, n_depths)
+    unscaled_valid_data, valid_start_dates, valid_site_ids = read_sequences(valid_lake_sequences_files, n_depths)
+    unscaled_test_data, test_start_dates, test_site_ids = read_sequences(test_lake_sequences_files, n_depths)
 
     # 2. Standardize using training data
 
@@ -162,9 +197,16 @@ def get_train_test_data(train_lake_sequences_files,
     valid_data = (unscaled_valid_data - train_data_means)/train_data_stds
     test_data = (unscaled_test_data - train_data_means)/train_data_stds
 
-    return (train_data,
-            valid_data,
-            test_data,
+    # Get site IDs from lake sequence filenames
+
+    # Combine into tuples to reduce number of arguments passed
+    split_data = (train_data, valid_data, test_data)
+    split_start_dates = (train_start_dates, valid_start_dates, test_start_dates)
+    split_site_ids = (train_site_ids, valid_site_ids, test_site_ids)
+
+    return (split_data, 
+            split_start_dates,
+            split_site_ids,
             train_data_means,
             train_data_stds
            )
@@ -177,7 +219,7 @@ def main(sequences_summary_file,
          split_summary_file,
          process_config):
     """
-    Read lake-specific sequences from .npy files, save .npz files for training,
+    Read lake-specific sequences from .npz files, save .npz files for training,
     validation, and test data, and save a file listing which lakes went into
     each set.
 
@@ -202,7 +244,7 @@ def main(sequences_summary_file,
     )
 
     # Get training, validation, and test data
-    train_data, valid_data, test_data, train_data_means, train_data_stds = get_train_test_data(
+    split_data, split_start_dates, split_site_ids, train_data_means, train_data_stds = get_train_test_data(
         train_lake_sequences_files,
         valid_lake_sequences_files,
         test_lake_sequences_files,
@@ -210,6 +252,11 @@ def main(sequences_summary_file,
         len(process_config['dynamic_features_all']),
         len(process_config['static_features_all'])
     )
+
+    # Unpack tuples
+    train_data, valid_data, test_data = split_data
+    train_start_dates, valid_start_dates, test_start_dates = split_start_dates
+    train_site_ids, valid_site_ids, test_site_ids = split_site_ids 
 
     # Create new directories as needed
     for filepath in [train_file, valid_file, test_file, split_summary_file]:
@@ -222,16 +269,22 @@ def main(sequences_summary_file,
     # keywords
     np.savez(train_file,
              data=train_data,
+             start_dates=train_start_dates,
+             site_ids=train_site_ids,
              train_data_means=train_data_means,
              train_data_stds=train_data_stds,
              **process_config)
     np.savez(valid_file,
              data=valid_data,
+             start_dates=valid_start_dates,
+             site_ids=valid_site_ids,
              train_data_means=train_data_means,
              train_data_stds=train_data_stds,
              **process_config)
     np.savez(test_file,
              data=test_data,
+             start_dates=test_start_dates,
+             site_ids=test_site_ids,
              train_data_means=train_data_means,
              train_data_stds=train_data_stds,
              **process_config)
