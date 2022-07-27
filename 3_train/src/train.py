@@ -10,7 +10,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 from torch.optim import Adam
 
 import sys
-sys.path.insert(1, '3_model/src')
+sys.path.insert(1, '3_train/src')
 from models import Model
 
 
@@ -253,22 +253,29 @@ def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
     return loss.item(), torch.sum(loss_idx).item()
 
 
-def fit(epochs, model, loss_func, opt, train_dl, valid_dl, device, weights_filepath, verbose=False):
+def fit(max_epochs, model, loss_func, opt, train_dl, valid_dl, device, weights_filepath, early_stopping_patience, verbose=False):
     """
     Train the model, and compute training and validation losses for each epoch
     
     Patterned after https://pytorch.org/tutorials/beginner/nn_tutorial.html#create-fit-and-get-data
 
-    :param epochs: Maximum number of training epochs
+    :param max_epochs: Maximum number of training epochs
     :param model: PyTorch model inheriting nn.Module()
     :param loss_func: PyTorch loss function, e.g., nn.MSELoss()
     :param opt: Optimizer to use to update model parameters
     :param train_dl: PyTorch DataLoader with training data
     :param valid_dl: PyTorch DataLoader with validation data
     :param device: Device that pytorch is running on (cpu or gpu)
+    :param early_stopping_patience: Number of epochs to train without
+        validation loss improvement, i.e., training stops after
+        early_stopping_patience epochs without improvement in the validation
+        loss. Set early_stopping_patience to -1 to turn off early stopping.
     :param verbose: Print more messages during execution
         (Default value = False)
-    :returns: Tuple of arrays of training and validation losses for each epoch
+    :returns: Tuple of:
+        array of training losses for each epoch,
+        array of validation losses for each epoch,
+        last epoch at which weights were saved
 
     """
 
@@ -288,8 +295,10 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, device, weights_filep
     train_losses = []
     valid_losses = []
     print('Epoch: train loss, validate loss', flush=True)
+    num_epochs_without_improvement = 0
+    saved_epoch = -1
     # Training loop
-    for epoch in range(epochs):
+    for epoch in range(max_epochs):
         model.train()
         train_loss = 0.0
         # Data is ordered as [dynamic inputs, static inputs, labels]
@@ -323,9 +332,19 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl, device, weights_filep
 
         # If this model has the lowest validation loss, save model weights
         if valid_loss == min(valid_losses):
+            num_epochs_without_improvement = 0
+            saved_epoch = epoch
             save_weights(model, weights_filepath, overwrite=True)
+        # Otherwise, add to count of high validation loss models and check for early stopping condition
+        else:
+            num_epochs_without_improvement += 1
+            # An early_stopping_patience of -1 means early stopping should not happen
+            if early_stopping_patience != -1:
+                if num_epochs_without_improvement >= early_stopping_patience:
+                    print(f'Stopping at epoch {epoch} after {num_epochs_without_improvement} epochs without improvement', flush=True)
+                    break
 
-    return train_losses, valid_losses
+    return train_losses, valid_losses, saved_epoch
 
 
 def save_weights(model, filepath, overwrite=True):
@@ -528,14 +547,17 @@ def main(train_npz_filepath,
 
     # Training loop
     train_start_time = str(datetime.now())
-    train_losses, valid_losses = fit(config['max_epochs'],
-                                     model,
-                                     loss_func,
-                                     optimizer,
-                                     train_data_loader,
-                                     valid_data_loader,
-                                     device,
-                                     weights_filepath)
+    train_losses, valid_losses, saved_epoch = fit(
+        config['max_epochs'],
+        model,
+        loss_func,
+        optimizer,
+        train_data_loader,
+        valid_data_loader,
+        device,
+        weights_filepath,
+        config['early_stopping_patience']
+    )
     train_end_time = str(datetime.now())
     print('Finished Training', flush=True)
 
@@ -546,6 +568,7 @@ def main(train_npz_filepath,
     config['train_losses'] = train_losses
     config['valid_losses'] = valid_losses
     config['n_epochs_trained'] = len(train_losses)
+    config['saved_epoch'] = saved_epoch
     config['git_hash'] = get_git_hash()
     config['git_status'] = get_git_status()
     save_metadata(config, train_npz_filepath, valid_npz_filepath, metadata_filepath, overwrite=True)
