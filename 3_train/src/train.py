@@ -92,9 +92,9 @@ def get_data_loaders(train_ds, valid_ds, batch_size):
 
 
 def get_sequence_dataset(npz_filepath,
-                        dynamic_features_use,
-                        static_features_use,
-                        depths_use):
+                         dynamic_features_use,
+                         static_features_use,
+                         depths_use):
     """
     Get SequenceDataset from npz file
     
@@ -169,15 +169,13 @@ def get_data(train_npz_filepath,
     return get_data_loaders(train_subset, valid_subset, batch_size)
 
 
-def get_model(
-    n_depths,
-    n_dynamic,
-    n_static,
-    hidden_size,
-    initial_forget_bias,
-    dropout,
-    concat_static
-):
+def get_model(n_depths,
+              n_dynamic,
+              n_static,
+              hidden_size,
+              initial_forget_bias,
+              dropout,
+              concat_static):
     """
     Create LSTM or EA-LSTM torch model
     
@@ -253,7 +251,16 @@ def loss_batch(model, loss_func, x_d, x_s, y, opt=None):
     return loss.item(), torch.sum(loss_idx).item()
 
 
-def fit(max_epochs, model, loss_func, opt, train_dl, valid_dl, device, weights_filepath, early_stopping_patience, verbose=False):
+def fit(max_epochs,
+        model,
+        loss_func,
+        opt,
+        train_dl,
+        valid_dl,
+        device,
+        weights_filepath,
+        early_stopping_patience,
+        verbose=False):
     """
     Train the model, and compute training and validation losses for each epoch
     
@@ -266,6 +273,7 @@ def fit(max_epochs, model, loss_func, opt, train_dl, valid_dl, device, weights_f
     :param train_dl: PyTorch DataLoader with training data
     :param valid_dl: PyTorch DataLoader with validation data
     :param device: Device that pytorch is running on (cpu or gpu)
+    :param weights_filepath: Path and filename to save model weights to
     :param early_stopping_patience: Number of epochs to train without
         validation loss improvement, i.e., training stops after
         early_stopping_patience epochs without improvement in the validation
@@ -441,7 +449,7 @@ def save_metadata(config, train_npz_filepath, valid_npz_filepath, save_filepath,
 def get_git_hash():
     """
     Get the hash of the current git revision
-
+    
     From https://stackoverflow.com/questions/14989858/get-the-current-git-hash-in-a-python-script
 
     :returns: String of current git revision's hash
