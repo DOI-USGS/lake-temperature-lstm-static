@@ -330,20 +330,23 @@ def fit(max_epochs, model, loss_func, opt, train_dl, valid_dl, device, weights_f
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
 
-        # If this model has the lowest validation loss, save model weights
-        if valid_loss == min(valid_losses):
-            num_epochs_without_improvement = 0
-            saved_epoch = epoch
-            save_weights(model, weights_filepath, overwrite=True)
-        # Otherwise, add to count of high validation loss models and check for early stopping condition
-        else:
-            num_epochs_without_improvement += 1
-            # An early_stopping_patience of -1 means early stopping should not happen
-            if early_stopping_patience != -1:
+        if early_stopping_patience != -1:
+            # If this model has the lowest validation loss, save model weights
+            if valid_loss == min(valid_losses):
+                num_epochs_without_improvement = 0
+                saved_epoch = epoch
+                save_weights(model, weights_filepath, overwrite=True)
+            # Otherwise, add to count of high validation loss models and check for early stopping condition
+            else:
+                num_epochs_without_improvement += 1
+                # An early_stopping_patience of -1 means early stopping should not happen
                 if num_epochs_without_improvement >= early_stopping_patience:
                     print(f'Stopping at epoch {epoch} after {num_epochs_without_improvement} epochs without improvement', flush=True)
                     break
 
+    if early_stopping_patience == -1:
+        saved_epoch = epoch
+        save_weights(model, weights_filepath, overwrite=True)
     return train_losses, valid_losses, saved_epoch
 
 
