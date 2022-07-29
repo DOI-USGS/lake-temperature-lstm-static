@@ -5,7 +5,7 @@ channels:
   - bioconda
 dependencies: 
   - pip
-  - pytorch = 1.10.1
+  - pytorch = 1.11.0
   - torchvision
   - torchaudio
   - cudatoolkit = 11.3
