@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-run_id=dropout_40
+run_id=hidden_100
 model_id=local_a
 data_source=model_prep
 log_dir=log/${run_id}_${model_id}
