@@ -41,3 +41,13 @@ rule interpolate_predictions:
     script:
         "4_evaluate/src/interpolate_predictions.py"
 
+
+# Plot RMS error over dataset as a function of depth
+rule plot_all_metrics:
+    input:
+        predictions_filepath = "4_evaluate/out/{data_source}/{run_id}/{model_id}/preds_{dataset}.npz"
+    output:
+        rmse_by_depth_filepath = "4_evaluate/out/{data_source}/{run_id}/{model_id}/plots/rmse-by-depth-{dataset}.png"
+    script:
+        "4_evaluate/src/plot_metrics.py"
+
