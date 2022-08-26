@@ -27,29 +27,32 @@ def unnormalize_dataset(metadata_filepath, dataset_filepath, output_filepath):
     elements_all = (data_npz['depths_all'].tolist() +
                     data_npz['dynamic_features_all'].tolist() +
                     data_npz['static_features_all'].tolist())
-    # Combine set to use into one list
-    # elements_use = (metadata['depths_use'].tolist() + 
-                    # metadata['dynamic_features_use'].tolist() + 
-                    # metadata['static_features_use'].tolist())
-    # Select set to use out of full set
-    # idx_to_use = [elements_all.index(e) for e in elements_use]
-    # Shape of data is (# sequences, sequence_length, # depths + # input features)
-    # Note: data_npz['data'][:,:,idx_to_use] 
-    # What's the best way to save memory space here?
+    # Select set to use out of full set for dynamic features, static features,
+    # and observations
     idx_dynamic = [elements_all.index(e) for e in metadata['dynamic_features_use'].tolist()]
     idx_static = [elements_all.index(e) for e in metadata['static_features_use'].tolist()]
     idx_observations = [elements_all.index(e) for e in metadata['depths_use'].tolist()]
 
     # Rescale by unnormalizing
-    x_d = (data_npz['data'][:,:,idx_dynamic] * metadata['train_data_stds'][idx_dynamic] +
+    # Unnormalized data = normalized data * standard deviation + mean
+    # Shape of data is (# sequences, sequence_length, # depths + # input features)
+    x_d = (data_npz['data'][:, :, idx_dynamic] *
+           metadata['train_data_stds'][idx_dynamic] +
            metadata['train_data_means'][idx_dynamic])
-    x_s = (data_npz['data'][:,0,idx_static] * metadata['train_data_stds'][idx_static] + 
+    # Only need one set of static features because they repeat at every time
+    # step, hence, the 0 index in [:, 0, idx_static]
+    x_s = (data_npz['data'][:, 0, idx_static] *
+           metadata['train_data_stds'][idx_static] +
            metadata['train_data_means'][idx_static])
-    y = (data_npz['data'][:,:,idx_observations] * metadata['train_data_stds'][idx_observations] +
+    y = (data_npz['data'][:, :, idx_observations] *
+         metadata['train_data_stds'][idx_observations] +
          metadata['train_data_means'][idx_observations])
 
     # Save to npz file
-    np.savez(output_filepath, static_features=x_s, dynamic_features=x_d, observations=y)
+    np.savez(output_filepath,
+             static_features=x_s,
+             dynamic_features=x_d,
+             observations=y)
 
 
 if __name__ == '__main__':
