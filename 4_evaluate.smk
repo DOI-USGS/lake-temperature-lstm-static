@@ -1,3 +1,16 @@
+# Save unnormalized dataset
+rule unnormalize_dataset:
+    input: 
+        # location of metadata depends on data_source, run_id, and model_id
+        metadata_filepath = "3_train/out/{data_source}/{run_id}/{model_id}_metadata.npz",
+        # path to train, valid, or test.npz depends on data_source but not on run_id or model_id
+        dataset_filepath = "2_process/out/{data_source}/{dataset}.npz"
+    output:
+        output_filepath = "4_evaluate/out/{data_source}/{run_id}/{model_id}/unnormalized_{dataset}.npz"
+    script:
+        "4_evaluate/src/unnormalize_dataset.py"
+
+
 # Make predictions
 rule predict_dataset:
     input:
