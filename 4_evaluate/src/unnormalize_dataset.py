@@ -13,11 +13,6 @@ def unnormalize_dataset(metadata_filepath, dataset_filepath, output_filepath):
     # Convert arrays to scalars where possible
     metadata = {file: metadata_npz[file][()] for file in metadata_npz.files}
 
-    # Get number of inputs/outputs
-    n_depths = len(metadata['depths_use'])
-    n_dynamic = len(metadata['dynamic_features_use'])
-    n_static = len(metadata['static_features_use'])
-
     # Load data
     data_npz = np.load(dataset_filepath)
 
