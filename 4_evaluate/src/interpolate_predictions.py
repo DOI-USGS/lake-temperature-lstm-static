@@ -66,10 +66,6 @@ def get_interpolated_predictions(predictions_filepath,
     start_dates = dataset_npz['start_dates']
     sequence_length = dataset_npz['sequence_length']
     spinup_time = dataset_npz['spinup_time']
-    sequence_offset = dataset_npz['sequence_offset']
-    depths_all = dataset_npz['depths_all']
-    dynamic_features_all = dataset_npz['dynamic_features_all']
-    static_features_all = dataset_npz['static_features_all']
 
     # Load metadata to get depths_use
     metadata_npz = np.load(metadata_filepath)
@@ -145,8 +141,8 @@ def get_interpolated_predictions(predictions_filepath,
     clipped_obs_depths = np.clip(obs_depths, min(depths_use), max(depths_use))
     # Pad depths with one value that is always below obs,
     # for convenience in interpolation algorithm below
-    pad_value = max(np.r_[depths_all, clipped_obs_depths] + 1)
-    padded_pred_depths = np.r_[depths_all, pad_value]
+    pad_value = max(np.r_[depths_use, clipped_obs_depths] + 1)
+    padded_pred_depths = np.r_[depths_use, pad_value]
 
     # Get index and value of next largest depth in list of depths
     def enumerate_depth_below(depth):
@@ -156,7 +152,7 @@ def get_interpolated_predictions(predictions_filepath,
     # Unpack list of two-element tuples into two arrays
     depth_below_index, depth_below = (np.array(tp) for tp in zip(*depth_below_tuples))
     depth_above_index = depth_below_index - 1
-    depth_above = depths_all[depth_above_index]
+    depth_above = depths_use[depth_above_index]
 
     # Compute interpolation factors
     above_factors = (depth_below - clipped_obs_depths)/(depth_below - depth_above)
