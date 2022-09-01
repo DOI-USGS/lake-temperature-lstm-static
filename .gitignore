@@ -168,6 +168,7 @@ dmypy.json
 /2_process/tmp/
 /2_process/out/
 /3_train/out/
+/4_evaluate/out/
 /log/
 
 # Specific files to include
