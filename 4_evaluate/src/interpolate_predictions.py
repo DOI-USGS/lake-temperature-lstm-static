@@ -26,7 +26,7 @@ def interpolate_predictions(predictions_filepath,
     :param above_factors: Interpolation factors for the predictions above the observations
     :param below_factors: Interpolation factors for the predictions below the observations
     :param use_obs: Indexing array for observation locations to interpolate to
-    :returns: array of predictions interpolated to observation depths
+    :returns: Array of temperature predictions interpolated to observation depths
 
     """
     # Load predictions
@@ -46,6 +46,17 @@ def get_interpolated_predictions(predictions_filepath,
                                  batch_size=5000):
     """
     Interpolate ML output to observation depths.
+
+    :param predictions_filepath: Path to unnormalized predictions for one
+        dataset (train, validation, or test)
+    :param metadata_filepath: Path to model training metadata npz for one dataset
+    :param dataset_filepath: Path to input for one dataset
+    :param obs_file: File with all temperature observations
+    :param interpolated_predictions_filepath: csv file to save interpolated
+        predictions to
+    :param batch_size: Number of observations to use per batch while matching
+        observations to prediction sequences (Default value = 5000)
+
     """
 
     # Load observations... from original data!
@@ -67,23 +78,27 @@ def get_interpolated_predictions(predictions_filepath,
     # Now, we'll need obs for each of those lakes.
     # Read temperature observations
     obs_all = pd.read_csv(obs_file, index_col=0, parse_dates=['date'])
-    # whittle down to lakes in this dataset
+    # Whittle down to lakes in this dataset
     obs = obs_all[obs_all.site_id.isin(site_ids)]
     obs_all.site_id.unique().shape, obs.site_id.unique().shape, np.unique(site_ids).shape
 
-    # 1. Which sequence(s) for this observation?
+    # Prepare to find the indices of the predictions that are needed to
+    # interpolate temperatures to observation depths, for every observation in
+    # the dataset. We need sequence index, index of day within sequence, and
+    # two depth indices: one above the observation, one below. First let's get
+    # sequence index and date index.
     pred_starts = start_dates + spinup_time
     pred_ends = start_dates + sequence_length
     n_obs = len(obs)
-    n_seqs = len(site_ids)
     obs_sites = obs.site_id.to_numpy('str')
     obs_dates_days = obs.date.to_numpy(dtype='datetime64[D]').astype(int)
     pred_starts_days = pred_starts.astype(int)
     pred_ends_days = pred_ends.astype(int)
 
-    # Without batches, this could require many GBs of memory
-    # One byte per bool (that's how numpy store bool arrays)
-    # Use batches to avoid memory burden
+    # Find prediction indices for every observation, looping over batches of
+    # observations. Without batches, this could require many GBs of memory: One
+    # byte per bool (that's how numpy store bool arrays) Batches to avoid
+    # memory burden while allowing some vectorized ops for speedup
     n_batches = int(np.ceil(n_obs/batch_size))
     sequence_indices = np.empty(n_obs, int)
     date_indices = np.empty(n_obs, int)
@@ -117,7 +132,7 @@ def get_interpolated_predictions(predictions_filepath,
             which_sequence = np.nanargmin(start_date_matrix[:, no_nans], axis=0)
             sequence_indices_batch = np.array([-1]*this_batch_size)
             sequence_indices_batch[no_nans] = idx_sequence[which_sequence]
-            # Now, get the index within the sequence for each obs
+            # Now, get the index of the date within the sequence for each obs
             date_indices_batch = np.array([-1]*this_batch_size)
             date_indices_batch[no_nans] = (obs_dates_days[batch_start:batch_end][no_nans] - 
                                            pred_starts_days[sequence_indices_batch[no_nans]])
@@ -133,11 +148,11 @@ def get_interpolated_predictions(predictions_filepath,
     pad_value = max(np.r_[depths_all, clipped_obs_depths] + 1)
     padded_pred_depths = np.r_[depths_all, pad_value]
 
+    # Get index and value of next largest depth in list of depths
     def enumerate_depth_below(depth):
-        # Get index and value of next largest depth in list of depths
         return next((ii, x) for ii, x in enumerate(padded_pred_depths) if x > depth)
-
     depth_below_tuples = [enumerate_depth_below(obs_depth) for obs_depth in clipped_obs_depths]
+
     # Unpack list of two-element tuples into two arrays
     depth_below_index, depth_below = (np.array(tp) for tp in zip(*depth_below_tuples))
     depth_above_index = depth_below_index - 1
