@@ -35,9 +35,9 @@ rule interpolate_predictions:
         dataset_filepath = "2_process/out/{data_source}/{dataset}.npz",
         obs_file = "2_process/tmp/{data_source}/temperature_observations_interpolated.csv"
     params:
-        batch_size = 10
+        batch_size = 100
     output:
-        interpolated_predictions_filepath = "4_evaluate/out/{data_source}/{run_id}/{model_id}/interp_preds_{dataset}.csv"
+        interpolated_predictions_filepath = "4_evaluate/out/{data_source}/{run_id}/{model_id}/interpolated_predictions_{dataset}.csv"
     script:
         "4_evaluate/src/interpolate_predictions.py"
 
