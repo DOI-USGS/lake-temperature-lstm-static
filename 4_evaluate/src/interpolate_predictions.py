@@ -90,40 +90,62 @@ def get_interpolated_predictions(predictions_filepath,
     obs_dates_days = obs.date.to_numpy(dtype='datetime64[D]').astype(int)
     pred_starts_days = pred_starts.astype(int)
     pred_ends_days = pred_ends.astype(int)
-
-    # Find prediction indices for every observation, looping over batches of
-    # observations. Without batches, this could require many GBs of memory: One
-    # byte per bool (that's how numpy store bool arrays) Batches to avoid
-    # memory burden while allowing some vectorized ops for speedup
     n_batches = int(np.ceil(n_obs/batch_size))
+    # Empty arrays to populate
     sequence_indices = np.empty(n_obs, int)
     date_indices = np.empty(n_obs, int)
+
+    # Find prediction indices for every observation, looping over batches of
+    # observations. Without batches, this could require many GBs of memory: one
+    # byte per bool (that's how numpy store bool arrays). Batches lessen the
+    # memory burden while allowing some vectorized ops for speedup
     for i_batch in tqdm(range(n_batches)):
         batch_start = i_batch*batch_size
         batch_end = min((i_batch + 1)*batch_size, n_obs)
         this_batch_size = batch_end-batch_start
 
-        # 3 conditions: right site ID, after sequence starts, and before sequence ends
-        # broadcast for speedup
+        # Make one huge boolean matrix with observations on rows and sequences
+        # on columns, then call nonzero to get indices (row and column) for
+        # True values in the huge matrix. 3 conditions to satisfy: obs and
+        # sequence have the same site ID, obs is after sequence starts, and obs
+        # is before sequence ends. Use broadcasting for speedup.
         idx_obs, idx_sequence = np.nonzero(
             (obs_sites[batch_start:batch_end, np.newaxis] == site_ids) &
             (obs_dates_days[batch_start:batch_end, np.newaxis] >= pred_starts_days) &
             (obs_dates_days[batch_start:batch_end, np.newaxis] < pred_ends_days)
         )
-        # Check to see if any sequences were found for this batch
+        # idx_obs and idx_sequence are now two arrays of same length.
+        # Their lengths are the number of matches found between obs and sequences.
+        # idx_obs indexes the obs in this batch that match sequences, and 
+        # idx_sequence indexes the sequences that match obs in this batch.
+        # Note that one obs may match multiple sequences (since they overlap)
+        # or no sequences (since some obs are before NLDAS starts).
+
+        # Check if any sequences were found for this batch
         if idx_obs.size == 0:
+            # If not, assign dummy value of -1 to final arrays (can't use NaN
+            # in an integer array) and move on to the next batch
             sequence_indices[batch_start:batch_end] = -1
             date_indices[batch_start:batch_end] = -1
         else:
-            # Now select the sequence with the earliest start date
+            # Since some observations can match multiple sequences, we need to
+            # pick one sequence. We use the sequence with the earlier starting
+            # date to allow more spinup (burn-in) time.
+
+            # Select the sequence with the earliest start date
             batch_start_dates = pred_starts_days[idx_sequence]
+            # Create a 2D array with the matches along rows and the observations in
+            # this batch along columns. Values are start dates where a match
+            # corresponds to an observation in this batch, and NaN otherwise.
             start_date_matrix = np.where(
                 idx_obs[:, np.newaxis] == np.arange(this_batch_size),
                 batch_start_dates[:, np.newaxis],
                 np.NaN
             )
-            # Make sure that no column of start_date_matrix is all NaN
-            # Otherwise, nanargmin will error
+            # If a column of start_date_matrix is all NaN, then the
+            # corresponding observation has no matching sequence. Make sure to
+            # remove columns of start_date_matrix that are all NaN. Otherwise,
+            # np.nanargmin will error
             no_nans = ~np.isnan(np.nanmin(start_date_matrix, axis=0))
             which_sequence = np.nanargmin(start_date_matrix[:, no_nans], axis=0)
             sequence_indices_batch = np.array([-1]*this_batch_size)
@@ -187,6 +209,7 @@ def get_interpolated_predictions(predictions_filepath,
                                           below_factors,
                                           use_obs)
 
+    # Add column named pred to obs and populate with NaN
     obs_preds = obs.assign(pred=np.NaN)
     obs_preds.loc[use_obs, 'pred'] = predictions
     obs_preds.to_csv(interpolated_predictions_filepath, index=False)
