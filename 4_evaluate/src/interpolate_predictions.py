@@ -211,7 +211,7 @@ def get_interpolated_predictions(predictions_filepath,
 
     # Add column named pred to obs and populate with NaN
     obs_preds = obs.assign(pred=np.NaN)
-    obs_preds.loc[use_obs, 'pred'] = predictions
+    obs_preds.loc[use_obs, 'predicted_temperature_obs_depth'] = predictions
     obs_preds.to_csv(interpolated_predictions_filepath, index=False)
 
 
