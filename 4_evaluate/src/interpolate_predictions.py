@@ -50,7 +50,8 @@ def get_interpolated_predictions(predictions_filepath,
     :param predictions_filepath: Path to unnormalized predictions for one
         dataset (train, validation, or test)
     :param metadata_filepath: Path to model training metadata npz for one dataset
-    :param dataset_filepath: Path to input for one dataset
+    :param dataset_filepath: Path to one dataset's npz containing features and
+        observations
     :param obs_file: File with all temperature observations
     :param interpolated_predictions_filepath: csv file to save interpolated
         predictions to
@@ -76,7 +77,6 @@ def get_interpolated_predictions(predictions_filepath,
     obs_all = pd.read_csv(obs_file, index_col=0, parse_dates=['date'])
     # Whittle down to lakes in this dataset
     obs = obs_all[obs_all.site_id.isin(site_ids)]
-    obs_all.site_id.unique().shape, obs.site_id.unique().shape, np.unique(site_ids).shape
 
     # Prepare to find the indices of the predictions that are needed to
     # interpolate temperatures to observation depths, for every observation in
@@ -180,13 +180,13 @@ def get_interpolated_predictions(predictions_filepath,
     above_factors = (depth_below - clipped_obs_depths)/(depth_below - depth_above)
     below_factors = (clipped_obs_depths - depth_above)/(depth_below - depth_above)
     # Check that the factors sum to 1
-    assert all(above_factors + below_factors == 1)
+    assert all(above_factors + below_factors == 1), 'Interpolation factors should sum to 1'
 
     # Now, some depth_below_index values are one greater than the maximum index in depths_use
     # The corresponding below_factors should be zero, though
     # Let's double check that
     too_low = np.nonzero(depth_below_index==len(depths_use))
-    assert all(below_factors[too_low] == 0)
+    assert all(below_factors[too_low] == 0), 'Interpolation factors below the lowest depth in depths_use should be 0'
     # Good. That means that the depth_below_index doesn't need to be used when it's one greater than max
     # because those values get multiplied by zero
     # Set those indices to the max index instead
