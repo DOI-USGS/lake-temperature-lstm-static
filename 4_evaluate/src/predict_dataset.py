@@ -90,7 +90,7 @@ def compute_dataset_predictions(weights_filepath,
     model.eval()
 
     num_sequences = data_loader.dataset.len
-    # Only save observations and predictions after spinup time
+    # Only save predictions after spinup time
     spinup_time = metadata['spinup_time']
     full_sequence_length = metadata['sequence_length']
     prediction_sequence_length = full_sequence_length - spinup_time
