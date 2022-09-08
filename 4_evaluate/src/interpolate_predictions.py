@@ -209,7 +209,11 @@ def get_interpolated_predictions(predictions_filepath,
                                           below_factors,
                                           use_obs)
 
-    # Add column named pred to obs and populate with NaN
+    # Add column named sequence_pos to obs and populate with -1
+    obs_preds = obs.assign(sequence_pos=-1)
+    obs_preds.loc[use_obs, 'sequence_pos'] = date_indices[use_obs]
+
+    # Add column named predicted_temperature_obs_depth to obs and populate with NaN
     obs_preds = obs.assign(predicted_temperature_obs_depth=np.NaN)
     obs_preds.loc[use_obs, 'predicted_temperature_obs_depth'] = predictions
     obs_preds.to_csv(interpolated_predictions_filepath, index=False)
