@@ -2,6 +2,7 @@ include: "1_fetch.smk"
 include: "2_process.smk"
 include: "3_train.smk"
 include: "4_evaluate.smk"
+include: "5_visualize.smk"
 
 
 rule all:
