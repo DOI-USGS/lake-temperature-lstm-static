@@ -11,7 +11,7 @@ rule plot_metric:
         include_train_mean = True,
         doy_bin_width = 5
     output:
-        plot_filepath = "5_visualize/out/{data_source}/{run_id}/{model_id}/{metric}-by-{by}-over-{dataset}.png"
+        plot_filepath = "5_visualize/out/{data_source}/{run_id}/{model_id}/{metric}-by-{plot_by}-over-{dataset}.png"
     script:
         "5_visualize/src/plot_metrics.py"
 

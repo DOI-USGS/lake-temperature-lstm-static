@@ -6,14 +6,14 @@ import hvplot.pandas
 import holoviews as hv
 
 
-def load_predictions(filepath, doy_bin_width):
+def load_predictions(predictions_filepath, doy_bin_width):
     """
     Load predictions for one dataset from a csv as a pandas Dataframe.
     Load the predictions for the training, validation, or testing set. Remove
     any NaN predictions. Compute residuals (as observed - predicted) and save
     them as an extra column in the dataframe.
     """
-    raw_preds = pd.read_csv(filepath, parse_dates=['date'])
+    raw_preds = pd.read_csv(predictions_filepath, parse_dates=['date'])
     # remove nans
     non_nan_preds = raw_preds.loc[~raw_preds['predicted_temperature_obs_depth'].isna()].copy()
     # Compute residuals (observed - predicted)
@@ -56,7 +56,7 @@ def plot_by_lake(agg_metric, lake_metadata_filepath, metric):
     return p
 
 
-def plot_metric(plot_filepath, predictions_filepath, metric, by,
+def plot_metric(plot_filepath, predictions_filepath, metric, plot_by,
                 lake_metadata_filepath=None,
                 train_predictions_filepath=None,
                 include_train_mean=False,
@@ -80,12 +80,12 @@ def plot_metric(plot_filepath, predictions_filepath, metric, by,
 
     # Aggregate metric of residuals by a variable
     agg_metric = (
-        preds.groupby(prediction_columns[by])['residual']
+        preds.groupby(prediction_columns[plot_by])['residual']
         .aggregate(agg_functions[metric])
         .rename(f'LSTM_{metric}')
     )
 
-    if by == 'lake':
+    if plot_by == 'lake':
         # Plotting by lake creates a geographic plot, so call separate function
         p = plot_by_lake(agg_metric, lake_metadata_filepath, metric)
     else:
@@ -94,11 +94,11 @@ def plot_metric(plot_filepath, predictions_filepath, metric, by,
             # This shows visually where prediction is more challenging due to observation variance
             # or difference from the training data
             train_preds = load_predictions(train_predictions_filepath, doy_bin_width)
-            train_mean_temp = train_preds.groupby(prediction_columns[by])['temp'].mean().rename('train_mean_temp')
-            preds_train_mean = preds.merge(train_mean_temp, how='left', on=prediction_columns[by]).copy()
+            train_mean_temp = train_preds.groupby(prediction_columns[plot_by])['temp'].mean().rename('train_mean_temp')
+            preds_train_mean = preds.merge(train_mean_temp, how='left', on=prediction_columns[plot_by]).copy()
             preds_train_mean['train_mean_residual'] = preds_train_mean['temp'] - preds_train_mean['train_mean_temp']
             metric_train_mean = (
-                preds_train_mean.groupby(prediction_columns[by])['train_mean_residual']
+                preds_train_mean.groupby(prediction_columns[plot_by])['train_mean_residual']
                 .aggregate(agg_functions[metric])
                 .rename(f'train_mean_{metric}')
             )
@@ -107,18 +107,18 @@ def plot_metric(plot_filepath, predictions_filepath, metric, by,
             df_plot = agg_metric
 
         zero_line = hv.HLine(0).opts(color='black', level='underlay')
-        if by == 'depth':
+        if plot_by == 'depth':
             if metric == 'bias':
                 p = df_plot.hvplot.line() * zero_line
             else:
                 p = df_plot.hvplot.line()
-        elif by == 'doy':
+        elif plot_by == 'doy':
             if metric == 'bias':
                 p = df_plot.hvplot.line() * zero_line
             else:
                 p = df_plot.hvplot.line()
         else:
-            raise ValueError(f'Evaluating metrics by {by} is not supported')
+            raise ValueError(f'Evaluating metrics by {plot_by} is not supported')
 
     destination_dir = os.path.dirname(plot_filepath)
     if not os.path.exists(destination_dir):
@@ -130,7 +130,7 @@ if __name__ == '__main__':
     plot_metric(snakemake.output.plot_filepath,
                 snakemake.input.interpolated_predictions_filepath,
                 snakemake.wildcards['metric'],
-                snakemake.wildcards['by'],
+                snakemake.wildcards['plot_by'],
                 lake_metadata_filepath=snakemake.input.lake_metadata_filepath,
                 train_predictions_filepath=snakemake.input.train_predictions_filepath,
                 include_train_mean=snakemake.params.include_train_mean,
