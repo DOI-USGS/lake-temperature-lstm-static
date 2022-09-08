@@ -1,303 +1,139 @@
+import os
 import numpy as np
-import matplotlib.pyplot as plt
-
-'''
-TODO: 
-- Get observations from unnormalized outputs
-- Ignore spinup time
-- Write one plotting function per plot
-- Write metric-computing functions
-  - training "bias" by depth
-  - training std by depth
-  - training "bias" by doy
-  - training std by doy
-  - RMSE by depth
-  - RMSE by doy
-  - Bias by depth
-  - Bias by doy
-- Call each from plot_all_metrics
-- Only necessary metrics stored in scope of plot_all_metrics
-- Keep full data/obs out of plot_all_metrics scope
-'''
+# import matplotlib.pyplot as plt
+import pandas as pd
+import hvplot.pandas
+import holoviews as hv
 
 
-def get_rmse_lake(metadata_filepath,
-                  normalized_dataset_filepath,
-                  unnormalized_data_set_filepath,
-                  predictions_filepath):
+def load_predictions(filepath, doy_bin_width):
     """
-    Compute RMS error at each lake over a dataset (training, validation, or
-    testing).
-
-    :param predictions_filepath: 
-
+    Load predictions for one dataset from a csv as a pandas Dataframe.
+    Load the predictions for the training, validation, or testing set. Remove
+    any NaN predictions. Compute residuals (as observed - predicted) and save
+    them as an extra column in the dataframe.
     """
-
-    # Load metadata to get spinup time
-    metadata_filepath = "3_train/out/model_prep/initial/local_a_metadata.npz"
-    metadata_npz = np.load(metadata_filepath)
-    # Convert npz to dictionary
-    # Convert arrays to scalars where possible
-    metadata = {file: metadata_npz[file][()] for file in metadata_npz.files}
-    spinup_time = metadata['spinup_time']
-
-    # Load normalized observations to get site ids
-    normalized_dataset_filepath = "2_process/out/model_prep/valid.npz"
-    normalized_dataset_npz = np.load(normalized_dataset_filepath)
-    site_ids = normalized_dataset_npz['site_ids']
-
-    # Load unnormalized observations to get observations
-    unnormalized_dataset_filepath = "4_evaluate/out/model_prep/initial/local_a/unnormalized_valid.npz"
-    unnormalized_dataset_npz = np.load(unnormalized_dataset_filepath)
-
-    # Load predictions
-    predictions_filepath = "4_evaluate/out/model_prep/initial/local_a/preds_valid.npz"
-    predictions_npz = np.load(predictions_filepath)
-
-    # Where are valid observations in time and space
-    i_obs = ~np.isnan(unnormalized_dataset_npz['observations'][:, spinup_time:, :])
-    # Number of observations per sequence
-    obs_counts = np.sum(i_obs, axis=(1,2))
-    # Squared Error per sequence
-    seq_SE = np.nansum((unnormalized_dataset_npz['observations'][:, spinup_time:, :] -
-                        predictions_npz['predictions'])**2, axis=(1,2))
-    unique_site_ids = np.unique(site_ids)
-    lake_RMSE = {}
-    for unique_site_id in unique_site_ids:
-        # Index of every sequence for this site
-        i_sequences = np.where(site_ids == unique_site_id)
-        # Total # observations for this site
-        n_obs = sum(obs_counts[i_sequences])
-        # Sum all squared errors for this site
-        lake_SE = sum(seq_SE[i_sequences])
-        # RMSE for this site
-        lake_RMSE[unique_site_id] = np.sqrt(lake_SE/n_obs)
-
-    return lake_RMSE
+    raw_preds = pd.read_csv(filepath, parse_dates=['date'])
+    # remove nans
+    non_nan_preds = raw_preds.loc[~raw_preds['predicted_temperature_obs_depth'].isna()].copy()
+    # Compute residuals (observed - predicted)
+    non_nan_preds['residual'] = non_nan_preds['temp'] - non_nan_preds['predicted_temperature_obs_depth']
+    # Add a column for day of year
+    non_nan_preds['doy'] = non_nan_preds['date'].dt.day_of_year
+    # Add a column for binned day of year
+    non_nan_preds['doy_bin'] = (doy_bin_width*round((non_nan_preds['doy'].astype(float))/doy_bin_width)).astype(int)
+    return non_nan_preds
 
 
-def get_bias_lake(predictions_filepath):
+def rms(df):
     """
-    Compute bias at each lake over a dataset (training, validation, or
-    testing).
+    Get RMS for a series
+    Useful as argument to groupby().aggregate()
     """
-
-    # Load metadata to get spinup time
-    metadata_filepath = "3_train/out/model_prep/initial/local_a_metadata.npz"
-    metadata_npz = np.load(metadata_filepath)
-    # Convert npz to dictionary
-    # Convert arrays to scalars where possible
-    metadata = {file: metadata_npz[file][()] for file in metadata_npz.files}
-    spinup_time = metadata['spinup_time']
-
-    # Load normalized observations to get site ids
-    normalized_dataset_filepath = "2_process/out/model_prep/valid.npz"
-    normalized_dataset_npz = np.load(normalized_dataset_filepath)
-    site_ids = normalized_dataset_npz['site_ids']
-
-    # Load unnormalized observations to get observations
-    unnormalized_dataset_filepath = "4_evaluate/out/model_prep/initial/local_a/unnormalized_valid.npz"
-    unnormalized_dataset_npz = np.load(unnormalized_dataset_filepath)
-
-    # Load predictions
-    predictions_filepath = "4_evaluate/out/model_prep/initial/local_a/preds_valid.npz"
-    predictions_npz = np.load(predictions_filepath)
-
-    # Where are valid observations in time and space
-    i_obs = ~np.isnan(unnormalized_dataset_npz['observations'][:, spinup_time:, :])
-    # Number of observations per sequence
-    obs_counts = np.sum(i_obs, axis=(1,2))
-    # Squared Error per sequence
-    seq_SE = np.nansum((unnormalized_dataset_npz['observations'][:, spinup_time:, :] -
-                        predictions_npz['predictions'])**2, axis=(1,2))
-    unique_site_ids = np.unique(site_ids)
-    lake_RMSE = {}
-    for unique_site_id in unique_site_ids:
-        # Index of every sequence for this site
-        i_sequences = np.where(site_ids == unique_site_id)
-        # Total # observations for this site
-        n_obs = sum(obs_counts[i_sequences])
-        # Sum all squared errors for this site
-        lake_SE = sum(seq_SE[i_sequences])
-        # RMSE for this site
-        lake_RMSE[unique_site_id] = np.sqrt(lake_SE/n_obs)
-
-    return lake_RMSE
-
-    pass
+    return np.sqrt((df**2).mean())
 
 
-def get_rmse_depth(predictions_filepath):
+def plot_by_lake(agg_metric, lake_metadata_filepath, metric):
+    # Augment with lake metadata
+    lake_metadata = pd.read_csv(lake_metadata_filepath, index_col=0)
+    df_plot = pd.merge(agg_metric, lake_metadata, how='left', on='site_id')
+    cmaps = {
+        'rmse': 'plasma',
+        'bias': 'RdBu'
+    }
+    p = df_plot.hvplot.points(
+        x='longitude',
+        y='latitude',
+        color=f'LSTM_{metric}',
+        cmap=cmaps[metric],
+        logz=False,
+        hover_cols='all',
+        geo=True,
+        tiles='CartoLight',
+        height=700,
+        width=700
+    )
+    return p
+
+
+def plot_metric(plot_filepath, predictions_filepath, metric, by,
+                lake_metadata_filepath=None,
+                train_predictions_filepath=None,
+                include_train_mean=False,
+                doy_bin_width=1):
     """
-    Compute RMS error at each output depth over a dataset (training,
-    validation, or testing).
+    Plot a metric (e.g. RMS error) as a function of some variable (e.g. lake depth)
     """
+    # Dictionary relating inputs to column names
+    prediction_columns = {
+        'lake': 'site_id',
+        'depth': 'interpolated_depth',
+        'doy': 'doy_bin'
+    }
+    # Dictionary relating inputs to aggregating functions
+    agg_functions = {
+        'rmse': rms,
+        'bias': 'mean'
+    }
 
-    # Load predictions
-    # TODO: include try/catch for if the file doesn't exist?
-    predictions_npz = np.load(predictions_filepath)
-    residuals = predictions_npz['observations'] - predictions_npz['predictions']
-    # Where are valid observations in time and space
-    iobs = ~np.isnan(residuals)
-    # Number of observations per depth
-    obs_counts = np.sum(iobs, axis=(0,1))
-    # Squared Error per depth
-    seq_SE = np.nansum((residuals)**2, axis=(0,1))
-    rmse_by_depth = np.sqrt(seq_SE/obs_counts)
-    return rmse_by_depth
+    preds = load_predictions(predictions_filepath, doy_bin_width)
 
+    # Aggregate metric of residuals by a variable
+    agg_metric = (
+        preds.groupby(prediction_columns[by])['residual']
+        .aggregate(agg_functions[metric])
+        .rename(f'LSTM_{metric}')
+    )
 
-def get_bias_depth(predictions_filepath):
-    """
-    Compute bias at each output depth over a dataset (training, validation, or
-    testing).
-    """
-
-    # Load predictions
-    predictions_filepath = "4_evaluate/out/model_prep/initial/local_a/preds_valid.npz"
-    predictions_npz = np.load(predictions_filepath)
-    bias_by_depth = np.nanmean((predictions_npz['observations'] - predictions_npz['predictions']), axis=(0,1))
-    return bias_by_depth
-
-
-def get_rmse_doy(predictions_filepath, metadata_filepath):
-    """
-    
-
-    :param predictions_filepath: 
-    :param metadata_filepath: 
-
-    """
-    # Load predictions
-    # TODO: include try/catch for if the file doesn't exist?
-    predictions_npz = np.load(predictions_filepath)
-    # TODO: Load starts from original dataset (foolproof)
-    # NOTE: While validation start dates are in the metadata,
-    # test start dates have to be loaded from 2_process/out/model_prep/test.npz
-    # Load metadata
-    metadata = np.load(metadata_filepath)
-    starts = metadata['valid_start_dates']
-    # get indices of every non-NaN residual
-    i0s, i1s, i2s = np.where(~np.isnan(predictions_npz['observations']))
-    # get non_NaN residuals
-    non_nan_residuals = predictions_npz['observations'][i0s, i1s, i2s] - predictions_npz['predictions'][i0s, i1s, i2s]
-    # get day-of-year of every non-NaN residual
-    res_day_of_year = np.array([(starts[i0] + i1).astype(datetime).timetuple().tm_yday for i0, i1 in zip(i0s, i1s)])
-    days_of_year = np.arange(1, 367)
-    rmse_by_doy = np.array([np.sqrt(np.mean(non_nan_residuals[res_day_of_year==doy]**2)) for doy in days_of_year])
-    return rmse_by_doy
-
-
-def get_bias_doy(predictions_filepath, metadata_filepath):
-    """
-    """
-    # Load predictions
-    # TODO: include try/catch for if the file doesn't exist?
-    predictions_npz = np.load(predictions_filepath)
-    # Load metadata
-    metadata = np.load(metadata_filepath)
-    # get indices of every non-NaN residual
-    i0s, i1s, i2s = np.where(~np.isnan(predictions_npz['observations']))
-    # get non_NaN residuals
-    non_nan_residuals = predictions_npz['observations'][i0s, i1s, i2s] - predictions_npz['predictions'][i0s, i1s, i2s]
-    # get day-of-year of every non-NaN residual
-    res_day_of_year = np.array([(starts[i0] + i1).astype(datetime).timetuple().tm_yday for i0, i1 in zip(i0s, i1s)])
-    days_of_year = np.arange(1, 367)
-
-    bias_by_doy = np.array([np.mean(non_nan_residuals[res_day_of_year==doy]) for doy in days_of_year])
-    return bias_by_doy
-
-
-def get_metric(metric_name, by, predictions_filepath, metadata_filepath=None):
-    """
-    Compute a metric (mean, RMSE, or bias) for a dataset (training, validation,
-    or testing) by day of year, depth, or by lake.
-
-    :param metric_name: 
-    :param by: 
-    :param predictions_filepath: 
-    :param metadata_filepath:  (Default value = None)
-
-    """
-    bad_by_message = 'The argument "by" must be: "depth", "doy", or "lake"'
-    bad_metric_name_message = 'The argument "metric_name" must be: "rmse" or "bias"'
-    if metric_name.lower() == 'rmse':
-        if by.lower() == 'depth':
-            metric = get_rmse_depth(predictions_filepath)
-        elif by.lower() == 'doy':
-            metric = get_rmse_doy(predictions_filepath, metadata_filepath)
-        elif by.lower() == 'lake':
-            metric = get_rmse_lake(predictions_filepath)
-        else:
-            raise ValueError(bad_by_message)
-    elif metric_name.lower() == 'bias':
-        if by.lower() == 'depth':
-            metric = get_bias_depth(predictions_filepath)
-        elif by.lower() == 'doy':
-            metric = get_bias_doy(predictions_filepath, metadata_filepath)
-        elif by.lower() == 'lake':
-            metric = get_bias_lake(predictions_filepath)
-        else:
-            raise ValueError(bad_by_message)
+    if by == 'lake':
+        # Plotting by lake creates a geographic plot, so call separate function
+        p = plot_by_lake(agg_metric, lake_metadata_filepath, metric)
     else:
-        raise ValueError(bad_metric_name_message)
+        if include_train_mean:
+            # For comparison, take the mean of the training set and use it as a predictor to get residuals
+            # This shows visually where prediction is more challenging due to observation variance
+            # or difference from the training data
+            train_preds = load_predictions(train_predictions_filepath, doy_bin_width)
+            train_mean_temp = train_preds.groupby(prediction_columns[by])['temp'].mean().rename('train_mean_temp')
+            preds_train_mean = preds.merge(train_mean_temp, how='left', on=prediction_columns[by]).copy()
+            preds_train_mean['train_mean_residual'] = preds_train_mean['temp'] - preds_train_mean['train_mean_temp']
+            metric_train_mean = (
+                preds_train_mean.groupby(prediction_columns[by])['train_mean_residual']
+                .aggregate(agg_functions[metric])
+                .rename(f'train_mean_{metric}')
+            )
+            df_plot = pd.merge(agg_metric, metric_train_mean, how='outer', left_index=True, right_index=True)
+        else:
+            df_plot = agg_metric
 
-    return metric
+        zero_line = hv.HLine(0).opts(color='black', level='underlay')
+        if by == 'depth':
+            if metric == 'bias':
+                p = df_plot.hvplot.line() * zero_line
+            else:
+                p = df_plot.hvplot.line()
+        elif by == 'doy':
+            if metric == 'bias':
+                p = df_plot.hvplot.line() * zero_line
+            else:
+                p = df_plot.hvplot.line()
+        else:
+            raise ValueError(f'Evaluating metrics by {by} is not supported')
 
-def plot_training_bias_depth():
-    pass
+    destination_dir = os.path.dirname(plot_filepath)
+    if not os.path.exists(destination_dir):
+        os.makedirs(destination_dir)
+    hvplot.save(p, plot_filepath)
 
-def plot_training_std_depth():
-    pass
-
-def plot_training_bias_doy():
-    pass
-
-def plot_training_std_doy():
-    pass
-
-def plot_rmse_depth(predictions_filepath, metadata_filepath, plot_filepath):
-    """
-    Plot RMS Error as a function of depth for a dataset (training, validation,
-    or testing). Save resulting plot to file.
-
-    :param predictions_filepath: 
-    :param metadata_filepath: 
-    :param plot_filepath: 
-
-    """
-    rmse_by_depth = get_rmse_depth(predictions_filepath)
-    metadata = np.load(metadata_filepath)
-    depths = metadata['depths_use']
-
-    # How does RMSE vary by depth?
-    plt.plot(depths, rmse_by_depth)
-    plt.xlabel('Depth, m')
-    plt.ylabel('RMSE, °C')
-    plt.savefig(plot_filepath)
-
-def plot_rmse_doy():
-    pass
-
-def plot_bias_depth():
-    pass
-
-def plot_bias_doy():
-    pass
-
-def plot_lake_evaluation():
-    pass
-
-def plot_all_metrics():
-    pass
-
-def plot_metric():
-    pass
 
 if __name__ == '__main__':
-    plot_all_metrics(snakemake.input.weights_filepath,
-                     snakemake.input.metadata_filepath,
-                     snakemake.input.dataset_filepath,
-                     snakemake.output.predictions_filepath)
+    plot_metric(snakemake.output.plot_filepath,
+                snakemake.input.interpolated_predictions_filepath,
+                snakemake.wildcards['metric'],
+                snakemake.wildcards['by'],
+                lake_metadata_filepath=snakemake.input.lake_metadata_filepath,
+                train_predictions_filepath=snakemake.input.train_predictions_filepath,
+                include_train_mean=snakemake.params.include_train_mean,
+                doy_bin_width=snakemake.params.doy_bin_width)
 
 
