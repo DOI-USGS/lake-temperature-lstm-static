@@ -75,7 +75,7 @@ def plot_by_lake(agg_metric, lake_metadata_filepath, metric):
     return p
 
 
-def plot_metric(plot_filepath, predictions_filepath, metric, plot_by,
+def plot_metric(predictions_filepath, metric, plot_by,
                 lake_metadata_filepath=None,
                 train_predictions_filepath=None,
                 include_train_mean=False,
@@ -93,8 +93,6 @@ def plot_metric(plot_filepath, predictions_filepath, metric, plot_by,
     of the training data is included in the plots. Note that the RMSE of the
     mean of the training data is the standard deviation of the training data.
 
-    :param plot_filepath: Path to save plot image to. Image format is
-        determined from extension.
     :param predictions_filepath: Path to predictions csv
     :param metric: Metric to plot: 'rmse' or 'bias'
     :param plot_by: Independent variable for evaluating metric: 'lake',
@@ -167,6 +165,51 @@ def plot_metric(plot_filepath, predictions_filepath, metric, plot_by,
         else:
             raise ValueError(f'Evaluating metrics by {plot_by} is not supported')
 
+    return p
+
+
+def save_metric_plot(plot_filepath, predictions_filepath, metric, plot_by,
+                     lake_metadata_filepath=None,
+                     train_predictions_filepath=None,
+                     include_train_mean=False,
+                     doy_bin_width=1):
+    """
+    Save a plot of a metric (e.g. RMS error) as a function of some variable
+    (e.g. lake depth).
+    
+    This function allows plotting RMSE or bias by lake, by depth in the lake, or by day of year.
+    
+    There is also the option to include metrics for the mean of the training
+    set. This allows performance to be compared against the variance of the
+    observations, which is useful. For instance, RMSE is lower in winter, but
+    that lower RMSE comes about because lake temperatures vary less during
+    winter months, not by any virtue of the model. This is clear when the mean
+    of the training data is included in the plots. Note that the RMSE of the
+    mean of the training data is the standard deviation of the training data.
+
+    :param plot_filepath: Path to save plot image to. Image format is
+        determined from extension.
+    :param predictions_filepath: Path to predictions csv
+    :param metric: Metric to plot: 'rmse' or 'bias'
+    :param plot_by: Independent variable for evaluating metric: 'lake',
+        'depth', or 'doy'
+    :param lake_metadata_filepath: Path to lake metadata csv (Default value =
+        None). Only needed for plotting by lake, to get lake latitude and
+        longitude.
+    :param train_predictions_filepath: Path to training set predictions csv (Default value = None)
+    :param include_train_mean: Whether to include metrics for the mean of the
+        training set in the plot (Default value = False).
+    :param doy_bin_width: Number of days to bin day of year to (Default value =
+        1). For example, a doy_bin_width of 7 means that the values in the
+        column doy_bin will increase by 7 at a time. Useful for smoothing out
+        plots of metrics by day of year.
+
+    """
+    p = plot_metric(predictions_filepath, metric, plot_by,
+                    lake_metadata_filepath=lake_metadata_filepath,
+                    train_predictions_filepath=train_predictions_filepath,
+                    include_train_mean=include_train_mean,
+                    doy_bin_width=doy_bin_width)
     destination_dir = os.path.dirname(plot_filepath)
     if not os.path.exists(destination_dir):
         os.makedirs(destination_dir)
@@ -174,13 +217,13 @@ def plot_metric(plot_filepath, predictions_filepath, metric, plot_by,
 
 
 if __name__ == '__main__':
-    plot_metric(snakemake.output.plot_filepath,
-                snakemake.input.interpolated_predictions_filepath,
-                snakemake.wildcards['metric'],
-                snakemake.wildcards['plot_by'],
-                lake_metadata_filepath=snakemake.input.lake_metadata_filepath,
-                train_predictions_filepath=snakemake.input.train_predictions_filepath,
-                include_train_mean=snakemake.params.include_train_mean,
-                doy_bin_width=snakemake.params.doy_bin_width)
+    save_metric_plot(snakemake.output.plot_filepath,
+                     snakemake.input.interpolated_predictions_filepath,
+                     snakemake.wildcards['metric'],
+                     snakemake.wildcards['plot_by'],
+                     lake_metadata_filepath=snakemake.input.lake_metadata_filepath,
+                     train_predictions_filepath=snakemake.input.train_predictions_filepath,
+                     include_train_mean=snakemake.params.include_train_mean,
+                     doy_bin_width=snakemake.params.doy_bin_width)
 
 
