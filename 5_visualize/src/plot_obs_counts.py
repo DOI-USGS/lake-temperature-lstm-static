@@ -82,6 +82,7 @@ def save_obs_count_plot(plot_filepath, predictions_filepath, lake_metadata_filep
 
     """
     fig = plot_obs_count(predictions_filepath, lake_metadata_filepath, plot_by, **kwargs)
+    plt.tight_layout()
     fig.savefig(plot_filepath)
 
 
