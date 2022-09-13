@@ -5,6 +5,11 @@ def unnormalize_dataset(metadata_filepath, dataset_filepath, output_filepath):
     Unnormalize and save observations or static and dynamic inputs for one dataset (training,
     validation, or testing).
 
+    :param metadata_filepath: Path to model training metadata npz
+    :param dataset_filepath: Path to dataset with features for prediction and
+        observations
+    :param output_filepath: Path to save unnormalized dataset to
+
     """
 
     # Load metadata

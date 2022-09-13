@@ -1,0 +1,29 @@
+name: ltls
+channels: 
+  - pytorch 
+  - pyviz
+  - conda-forge
+  - bioconda
+dependencies: 
+  - pip
+  - pytorch = 1.11.0
+  - torchvision
+  - torchaudio
+  - snakemake
+  - pandas 
+  - pyarrow
+  - r-base
+  - numpy
+  - matplotlib
+  - scipy
+  - git
+  - jupyterlab
+  - ipykernel
+  - holoviews
+  - hvplot
+  - selenium
+  - firefox
+  - geckodriver
+  - geoviews
+  - pip:
+    - sciencebasepy

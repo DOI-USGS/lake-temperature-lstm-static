@@ -26,6 +26,7 @@
 *.svg
 *.swp
 *.swo
+*.dummy
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

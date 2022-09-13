@@ -1,6 +1,7 @@
 name: ltls
 channels: 
   - pytorch 
+  - pyviz
   - conda-forge
   - bioconda
 dependencies: 
@@ -19,5 +20,11 @@ dependencies:
   - git
   - jupyterlab
   - ipykernel
+  - holoviews
+  - hvplot
+  - selenium
+  - firefox
+  - geckodriver
+  - geoviews
   - pip:
     - sciencebasepy
