@@ -11,7 +11,7 @@ rule plot_metric:
         include_train_mean = True,
         bin_width = None
     output:
-        plot_filepath = "5_visualize/out/{data_source}/{run_id}/{model_id}/{metric}-by-{plot_by}-over-{dataset}.png"
+        plot_filepath = "5_visualize/out/{data_source}/{run_id}/{model_id}/{metric,rmse|bias}-by-{plot_by}-over-{dataset}.png"
     script:
         "5_visualize/src/plot_metrics.py"
 
@@ -34,4 +34,16 @@ rule plot_all_metrics:
         dummyfile = "5_visualize/out/{data_source}/{run_id}/{model_id}/plot_all_{dataset}.dummy"
     shell:
         "touch {output.dummyfile}"
+
+
+# Plot histograms of observations
+rule plot_obs_count:
+    input:
+        predictions_filepath = "4_evaluate/out/{data_source}/{run_id}/{model_id}/interpolated_predictions_{dataset}.csv",
+        lake_metadata_filepath = "2_process/tmp/{data_source}/lake_metadata_augmented.csv"
+    output:
+        plot_filepath = "5_visualize/out/{data_source}/{run_id}/{model_id}/obs-count-by-{plot_by}-over-{dataset}.png"
+    script:
+        "5_visualize/src/plot_obs_counts.py"
+
 

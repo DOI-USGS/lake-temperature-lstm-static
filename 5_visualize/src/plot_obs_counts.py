@@ -59,3 +59,11 @@ def save_obs_count_plot(plot_filepath, predictions_filepath, lake_metadata_filep
     fig = plot_obs_count(predictions_filepath, lake_metadata_filepath, plot_by, **kwargs)
     fig.savefig(plot_filepath)
 
+
+if __name__ == '__main__':
+    save_obs_count_plot(snakemake.output.plot_filepath,
+                        snakemake.input.predictions_filepath,
+                        snakemake.input.lake_metadata_filepath,
+                        snakemake.wildcards['plot_by'])
+
+
