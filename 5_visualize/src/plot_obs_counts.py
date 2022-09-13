@@ -9,9 +9,22 @@ from plot_metrics import load_predictions
 
 def plot_obs_count(predictions_filepath, lake_metadata_filepath, plot_by, **kwargs):
     """
+    Plot the density of observation data as a histogram or hexbin plot, as a
+    function of some variable (e.g. lake depth).
+
+    :param predictions_filepath: Path to predictions csv to load
+    :param lake_metadata_filepath: Path to lake metadata csv
+    :param plot_by: Independent variable for plot: 
+        'elevation', 'area', 'depth', 'doy', or 'doy_depth'. If 'doy_depth', a
+        hexbin is plotted with day of year on the horizontal axis and depth on
+        the vertical axis.
+    :param **kwargs: Keyword arguments to pass through to call to library
+        plotting function (sns.histplot or plt.hexbin)
+    :returns: Matplotlib figure
+
     """
 
-    preds = load_predictions(predictions_filepath, lake_metadata_filepath, None, None)
+    preds = load_predictions(predictions_filepath, lake_metadata_filepath=lake_metadata_filepath)
 
     fig, ax = plt.subplots()
     if plot_by == 'area':
@@ -55,6 +68,18 @@ def plot_obs_count(predictions_filepath, lake_metadata_filepath, plot_by, **kwar
 
 def save_obs_count_plot(plot_filepath, predictions_filepath, lake_metadata_filepath, plot_by, **kwargs):
     """
+    Save a plot of the density of observation data as a histogram or hexbin
+    plot, as a function of some variable (e.g. lake depth) to a file.
+
+    :param plot_filepath: Path to save plot image to. Image format is
+        determined from extension.
+    :param predictions_filepath: Path to predictions csv to load
+    :param lake_metadata_filepath: Path to lake metadata csv
+    :param plot_by: Independent variable for evaluating metric: 
+        'depth', 'doy', 'elevation', or 'area'
+    :param **kwargs: Keyword arguments to pass through to call to library
+        plotting function (sns.histplot or plt.hexbin)
+
     """
     fig = plot_obs_count(predictions_filepath, lake_metadata_filepath, plot_by, **kwargs)
     fig.savefig(plot_filepath)
