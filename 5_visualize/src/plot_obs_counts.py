@@ -55,7 +55,6 @@ def plot_obs_count(predictions_filepath, lake_metadata_filepath, plot_by, **kwar
         ax.set_ylabel('Number of observations')
     elif plot_by == 'doy_depth':
         # Number of observations by day of year and depth
-        fig, ax = plt.subplots()
         hexbin = ax.hexbin(preds.doy, preds.depth, bins='log', **kwargs)
         cbar = plt.colorbar(hexbin)
         cbar.set_label('Number of observations')
