@@ -16,6 +16,7 @@ dependencies:
   - r-base
   - numpy
   - matplotlib
+  - seaborn
   - scipy
   - git
   - jupyterlab
