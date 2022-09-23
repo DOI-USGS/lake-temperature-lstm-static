@@ -14,9 +14,9 @@ def compute_metrics(predictions_filepath):
     rmse_lake = preds.groupby('site_id')['residual'].aggregate(rms).rename('LSTM_rmse')
 
     results_dict = {
-        'RMSE': rms(preds['residual']),
-        'Median lake RMSE': rmse_lake.median(),
-        'Mean lake RMSE': rmse_lake.mean(),
+        'RMSE': [rms(preds['residual'])],
+        'Median lake RMSE': [rmse_lake.median()],
+        'Mean lake RMSE': [rmse_lake.mean()],
     }
     return pd.DataFrame(results_dict)
 
