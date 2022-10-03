@@ -17,6 +17,8 @@ def compute_metrics(predictions_filepath):
         'RMSE': [rms(preds['residual'])],
         'Median lake RMSE': [rmse_lake.median()],
         'Mean lake RMSE': [rmse_lake.mean()],
+        'Number observations': preds.shape[0],
+        'Number lakes': rmse_lake.shape[0]
     }
     return pd.DataFrame(results_dict)
 
