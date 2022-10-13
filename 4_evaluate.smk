@@ -46,8 +46,6 @@ rule interpolate_predictions:
 rule write_metrics:
     input:
         interpolated_predictions_filepath = "4_evaluate/out/{data_source}/{run_id}/{model_id}/interpolated_predictions_{dataset}.csv",
-        lake_metadata_filepath = "2_process/tmp/{data_source}/lake_metadata_augmented.csv",
-        train_predictions_filepath = "4_evaluate/out/{data_source}/{run_id}/{model_id}/interpolated_predictions_train.csv",
     output:
         metrics_filepath = "4_evaluate/out/{data_source}/{run_id}/{model_id}/metrics_{dataset}.csv"
     script:
