@@ -20,7 +20,7 @@ def compute_metrics(predictions_filepath):
 
     """
     preds = load_predictions(predictions_filepath)
-    rmse_lake = preds.groupby('site_id')['residual'].aggregate(rms).rename('LSTM_rmse')
+    rmse_lake = preds.groupby('site_id')['residual'].aggregate(rms)
 
     results_dict = {
         'RMSE': [rms(preds['residual'])],
